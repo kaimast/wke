@@ -1,0 +1,15 @@
+[project]
+name = "wke"
+version = "0.1"
+dependencies=['paramiko', 'pandas', 'seaborn']
+requires-python=">=3.11"
+
+[metadata]
+author = "Kai Mast"
+author_email = "kaimast@cs.wisc.edu"
+
+[build-system]
+requires = ["setuptools", "wheel"]
+
+[project.scripts]
+wke = "wke.bin.cmd:main"
