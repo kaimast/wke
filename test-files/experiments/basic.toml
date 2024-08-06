@@ -1,0 +1,7 @@
+[experiment]
+num_iterations=2
+
+[parameters]
+workload="hello-world"
+num-txns=1000
+worker-type=["docker", "open-lambda", "faasm"]

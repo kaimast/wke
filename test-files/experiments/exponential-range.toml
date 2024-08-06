@@ -1,0 +1,7 @@
+[experiment]
+num_iterations=5
+
+[parameters]
+workload="hello-world"
+num-txns={ base=10, start=2, end=10, step-size=2 }
+worker-type="docker"

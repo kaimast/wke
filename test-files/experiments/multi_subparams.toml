@@ -1,0 +1,22 @@
+# Tests double-nested subparameters
+
+[experiment]
+num_iterations=2
+
+[parameters]
+workload="hello-world"
+sub-parameters=[["foo", "bar"],["txns100", "txns200"]]
+
+[foo]
+num-clients=10
+worker-type="docker"
+
+[bar]
+num-clients=20
+worker-type="open-lambda"
+
+[txns100]
+num-txns=100
+
+[txns200]
+num-txns=200

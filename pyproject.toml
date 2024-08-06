@@ -1,0 +1,32 @@
+[project]
+name = "wke"
+version = "0.1"
+dependencies=['paramiko', 'pandas', 'seaborn']
+requires-python=">=3.11"
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+]
+
+
+[project.urls]
+Homepage = "https://github.com/kaimast/wke"
+Issues = "https://github.com/kaimast/wke/issues"
+
+[metadata]
+author = "Kai Mast"
+author_email = "kai@kaimast.com"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+wke = "wke.bin.cmd:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.setuptools.package-data]
+"*" = ["py.typed"]

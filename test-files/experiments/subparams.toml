@@ -1,0 +1,16 @@
+[experiment]
+num_iterations=2
+
+[parameters]
+workload="hello-world"
+sub-parameters=["foo", "bar"]
+
+[foo]
+num-clients=10
+num-txns=[100,200]
+worker-type="docker"
+
+[bar]
+num-clients=20
+num-txns=[1000,2000]
+worker-type="open-lambda"

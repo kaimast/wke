@@ -1,0 +1,11 @@
+[experiment]
+num_iterations=2
+
+[parameters]
+workload="hello-world"
+sub-parameters=["foo"]
+
+[foo]
+num-clients={ start=20, end=100, step-size=80 }
+num-txns=[100]
+worker-type="docker"
