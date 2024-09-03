@@ -1,7 +1,7 @@
 # wke: A benchmarking tool for distributed systems  
 
 [![ci-badge](https://github.com/kaimast/wke/actions/workflows/ci.yml/badge.svg)](https://github.com/kaimast/wke/actions)
-![PyPI](https://img.shields.io/pypi/v/PACKAGE?label=wke)
+[![PyPI](https://img.shields.io/pypi/v/PACKAGE?label=wke)](https://pypi.org/project/wke/)
 
 This tool can deploy and measure the behavior of distributed systems. However, it is not a general framework for running things on remote machines but tailored to the specific task of running experiments/benchmarks.
 
