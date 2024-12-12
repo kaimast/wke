@@ -198,7 +198,7 @@ class Task(Thread):
                         username=self.username,
                         sock=sock, banner_timeout=60)
                 except paramiko.ssh_exception.AuthenticationException as err:
-                    print(f"ERROR: Failed to connect. {err}")
+                    print(f"ERROR: Failed to connect to {self.machine_name}: {err}")
                     self.exception = RemoteExecutionError(
                         self.machine_name, self.task_name, str(err))
                     return
