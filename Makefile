@@ -11,8 +11,8 @@ cloc:
 	cloc ${SRC_DIR}
 
 lint:
-	pylint ${SRC_DIR}
 	mypy ${SRC_DIR}
+	pylint ${SRC_DIR} --disable=R0917
 
 test:
 	pytest tests

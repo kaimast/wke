@@ -193,9 +193,15 @@ class Task(Thread):
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 ssh.load_system_host_keys()
 
-                ssh.connect(self._machine_info.external_addr,
+                try:
+                    ssh.connect(self._machine_info.external_addr,
                         username=self.username,
                         sock=sock, banner_timeout=60)
+                except paramiko.ssh_exception.AuthenticationException as err:
+                    print(f"ERROR: Failed to connect. {err}")
+                    self.exception = RemoteExecutionError(
+                        self.machine_name, self.task_name, str(err))
+                    return
 
                 transport = ssh.get_transport()
                 channel = transport.open_session()

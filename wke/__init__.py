@@ -2,7 +2,8 @@
 wsk helps deploying and executing experiments on a compute cluster
 """
 
-from .errors import ConfigurationError, ClusterError, BenchmarkError, MeasurementFailedError
+from .errors import ConfigurationError, ClusterError, BenchmarkError
+from .errors import MeasurementFailedError, RemoteExecutionError
 from .cluster import Cluster
 from .config import Configuration
 from .run import run, run_background
