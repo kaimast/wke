@@ -3,3 +3,4 @@ logs/
 dist/
 build/
 wke.egg-info/
+.mypy_cache

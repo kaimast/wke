@@ -17,7 +17,7 @@ from sys import stdout
 from time import sleep
 
 from .. import run, Configuration, Cluster, ConfigurationError
-from .. import ClusterError, plot_loads
+from .. import ClusterError, RemoteExecutionError, plot_loads
 
 def _generate_run_args_parser(subparsers):
     parser = subparsers.add_parser('run', help='Run a target on one or multiple machines')
@@ -326,6 +326,9 @@ def _run_command(args):
             success = run(machines, config, target, options=options,
                 verbose=args.verbose, multiply=args.multiply, prelude=args.prelude,
                 debug=args.debug, dry_run=args.dry_run, workdir=args.workdir)
+        except RemoteExecutionError as err:
+            print(f"ERROR: {err}")
+            success = False
         except ValueError as err:
             print(f"ERROR: {err}")
             success = False

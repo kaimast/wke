@@ -242,6 +242,7 @@ class Configuration:
 
         preludes = self._preludes
         self._preludes = parent._preludes
+        self._default_prelude = parent._default_prelude
         targets = self._targets
         self._targets = parent._targets
 

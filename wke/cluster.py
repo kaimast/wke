@@ -20,7 +20,7 @@ class Cluster:
 
     def __init__(self, path: str='cluster.toml'):
         if not isinstance(path, str) or len(path) == 0:
-            raise ValueError("Path must be a non-empty string")
+            raise ClusterError("Path for cluster file must be a non-empty string")
 
         try:
             with open(path, 'rb') as file:
