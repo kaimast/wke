@@ -268,7 +268,8 @@ class Configuration:
                 else:
                     about = "No description"
             else:
-                raise RuntimeError("Prelude has invalid type")
+                raise ConfigurationError(f"Prelude has invalid type. "
+                    f"Should be str or dict, but was {type(value)}")
 
             if name in PROTECTED_NAMES:
                 raise ConfigurationError(f"Prelude uses reserved name: {name}")

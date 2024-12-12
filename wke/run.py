@@ -2,12 +2,14 @@
 
 ''' Interfaces to run a target or built-in command on a set of selector '''
 
-# pylint: disable=too-many-branches,too-many-locals,too-many-arguments,fixme
+# pylint: disable=too-many-branches,too-many-locals,too-many-arguments
+# pylint: disable=fixme,too-many-positional-arguments
 
 import multiprocessing
 
 from time import time
 
+from .errors import RemoteExecutionError, RunTargetError
 from .util import bash_wrap
 from .tasks import Task, join_all
 from .cluster import Cluster
@@ -67,14 +69,14 @@ def _builtin_install_packages(selector, config: Configuration, verbose: bool,
     if len(repos) == 0 and len(packages) == 0:
         print(("No required ubuntu repositiories or packages found. "
                "Will not install anything."))
-        return True
+        return
 
     print(f'Adding {len(repos)} repositories and {len(packages)} packages '
           f' to machines {[m.name for m in machines]}')
 
     if dry_run:
         print("Try run was requested. Will stop here.")
-        return True
+        return
 
     for minfo in machines:
         add_repos = [sudo+"apt-add-repository "+repo for repo in repos]
@@ -94,11 +96,7 @@ def _builtin_install_packages(selector, config: Configuration, verbose: bool,
     errors = join_all(tasks)
 
     if len(errors) > 0:
-        print(f'❗ "install-packages" got {len(errors)} errors (see logs for more information):')
-        for err in errors:
-            print(f"\t{err}")
-
-    return len(errors) == 0
+        raise RunTargetError("install-package", errors)
 
 def _parse_options(target, options) -> tuple[list[str], str]:
     '''
@@ -133,10 +131,30 @@ def _parse_options(target, options) -> tuple[list[str], str]:
 
     return (argv, ", ".join(argstr))
 
-def run(selector, config, target_name, options=None, verbose=False, multiply=1,
-        stdout=None, prelude=None, quiet_fail=False, dry_run=False,
-        log_dir=None, timeout=None, debug=False, workdir=None):
+def run(selector, config, target_name, options=None, verbose=False,
+        multiply=1, stdout=None, prelude=None, dry_run=False,
+        log_dir=None, timeout=None, debug=False, workdir=None,
+        quiet_fail=False) -> bool:
     ''' Runs the specified command(s) in the foreground '''
+    try:
+        check_run(selector, config, target_name, options=options,
+            verbose=verbose, multiply=multiply, stdout=stdout,
+            prelude=prelude, dry_run=dry_run, log_dir=log_dir,
+            timeout=timeout, debug=debug, workdir=workdir)
+        return True
+    except RemoteExecutionError as err:
+        if not quiet_fail:
+            print('❗' + str(err))
+
+        return False
+
+def check_run(selector, config, target_name, options=None, verbose=False,
+        multiply=1, stdout=None, prelude=None, dry_run=False,
+        log_dir=None, timeout=None, debug=False, workdir=None):
+    '''
+        This behaves like `run` but, smilar to subprocess.check_call
+        will throw an exception on failure
+    '''
 
     if not isinstance(selector, (Slice, Cluster, MachineSet)):
         raise ValueError("selector is not a slice, cluster, or machine set")
@@ -147,8 +165,9 @@ def run(selector, config, target_name, options=None, verbose=False, multiply=1,
         if debug:
             print('Found built-in "install-packages"')
 
-        return _builtin_install_packages(selector, config,
-                                dry_run=dry_run, verbose=verbose)
+        _builtin_install_packages(selector, config,
+                   dry_run=dry_run, verbose=verbose)
+        return
 
     target = config.get_target(target_name)
     if target is None:
@@ -156,8 +175,10 @@ def run(selector, config, target_name, options=None, verbose=False, multiply=1,
 
     argv, argstr = _parse_options(target, options)
 
+    # Use default if not prelude is specified
     if prelude is None:
         prelude = config.default_prelude
+    # User explicitly specified to not use a prelude
     elif prelude in ['None', 'none']:
         prelude = None
 
@@ -169,15 +190,15 @@ def run(selector, config, target_name, options=None, verbose=False, multiply=1,
     else:
         prelude_txt = ""
 
-    machines =selector.get_all_machines()
+    machines = selector.get_all_machines()
     tasks = []
 
     print((f'ℹ️  Running "{config.name}::{target.name}" on {len(machines)} machine(s) '
-           f'with arrguments=[{argstr}]') + prelude_txt)
+           f'with arguments=[{argstr}]') + prelude_txt)
 
     if dry_run:
         print("dry_run was specified, so I will stop here")
-        return True
+        return
 
     if not workdir:
         workdir = selector.workdir
@@ -207,14 +228,8 @@ def run(selector, config, target_name, options=None, verbose=False, multiply=1,
 
     errs = join_all(tasks, start_time=start_time, timeout=timeout)
 
-    if len(errs) == 0:
-        return True
-
-    if len(errs) > 0 and not quiet_fail:
-        print(f'❗ Target "{target.name}" got {len(errs)} errors (see logs for more information):')
-        for err in errs:
-            print(f"\t{err}")
-    return False
+    if len(errs) > 0:
+        raise RunTargetError(target.name, errs)
 
 def run_background(*args, **kwargs) -> multiprocessing.Process:
     ''' Runs the specified command(s) in the background '''

@@ -1,6 +1,7 @@
 ''' Helper scripts to build benchmarks '''
 
-# pylint: disable=too-many-locals,too-many-arguments,too-many-nested-blocks,fixme,line-too-long
+# pylint: disable=too-many-locals,too-many-arguments,fixme,line-too-long
+# pylint: disable=too-many-nested-blocks,too-many-positional-arguments
 
 import sys
 import argparse
