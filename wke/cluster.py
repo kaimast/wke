@@ -18,7 +18,10 @@ from .errors import ClusterError
 class Cluster:
     ''' Holds the contents of the cluster.toml file '''
 
-    def __init__(self, path='cluster.toml'):
+    def __init__(self, path: str='cluster.toml'):
+        if not isinstance(path, str) or len(path) == 0:
+            raise ValueError("Path must be a non-empty string")
+
         try:
             with open(path, 'rb') as file:
                 self.cluster_toml = tomllib.load(file)
@@ -39,10 +42,10 @@ class Cluster:
         machines_toml = self.cluster_toml["machines"]
 
         # Ordered list of all machines as they are defined in the toml file
-        self._machines = []
+        self._machines: list[MachineInfo] = []
 
         # Index of machines by name
-        self._machine_names = {}
+        self._machine_names: dict[str, MachineInfo] = {}
 
         if isinstance(machines_toml, dict):
             for name, machine_def in machines_toml.items():
@@ -65,6 +68,10 @@ class Cluster:
         }
 
     def _parse_machine(self, name, machine_def):
+        '''
+        Reads the machine definiton (from disk) and adds it to the cluster
+        '''
+
         if isinstance(machine_def, dict):
             if "external_addr" in machine_def:
                 external_addr = machine_def["external_addr"]
@@ -106,7 +113,7 @@ class Cluster:
             raise RuntimeError("Machine's internal address is an empty string")
 
         index = len(self._machines)
-        minfo =  MachineInfo(name, index, external_addr, internal_addr)
+        minfo = MachineInfo(name, index, external_addr, internal_addr)
         self._machines.append(minfo)
         self._machine_names[name] = minfo
 
