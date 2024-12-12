@@ -12,7 +12,7 @@ cloc:
 
 lint:
 	mypy ${SRC_DIR}
-	pylint ${SRC_DIR} --disable=R0917
+	pylint ${SRC_DIR}
 
 test:
 	pytest tests

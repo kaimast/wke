@@ -1,6 +1,6 @@
 ''' This is part of the benchmark scripts. See __init__.py for more details. '''
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-statements,too-many-locals
+# pylint: disable=too-many-arguments,too-many-branches,too-many-statements,too-many-locals,too-many-positional-arguments
 
 import sys
 

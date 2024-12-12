@@ -25,6 +25,29 @@ class RemoteExecutionError(Exception):
     def __str__(self):
         return f"Error on {self.machine} for command {self.command}: {self.message}"
 
+class RunTargetError(Exception):
+    ''' Error created when calling check_run. Captures errors on multiple machines '''
+    def __init__(self, target: str, errors: list[str]):
+        assert len(errors) > 0, "at least one failure must have happened"
+
+        self._target = target
+        self._errors = errors
+
+    def __str__(self) -> str:
+        msg = f"Error while running target {self.target}: \n"
+        msg += '\n'.join(f'\t💥 {err}' for err in self._errors)
+        return msg
+
+    @property
+    def target(self) -> str:
+        ''' The target that we failed to execute '''
+        return self._target
+
+    @property
+    def machine_errors(self) -> list[str]:
+        ''' Get the individual per-machine errors '''
+        return self._errors
+
 class MeasurementFailedError(Exception):
     ''' Indicates the measurement was not successful '''
 

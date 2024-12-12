@@ -1,6 +1,7 @@
 ''' Utilities to handle connections to a remote machine '''
 
 #pylint: disable=too-many-instance-attributes,too-many-arguments,fixme
+#pylint: disable=too-many-positional-arguments
 
 from threading import Thread, Event
 from time import time, sleep
@@ -314,16 +315,16 @@ def _try_join_task(task: Task, all_tasks: list[Task],
         return False # still running
 
     if task.exitcode is None:
-        print(f"⚠️  No exitcode for machine {task.name}")
+        print(f"⚠️  No exitcode for machine {task.machine_name}")
 
-    if task.was_stopped and task.exitcode != 0:
-        all_errors.append(f'💥 Machine {task.name} exitcode {task.exitcode}')
+    if not task.was_stopped and task.exitcode != 0:
+        all_errors.append(f'Machine {task.machine_name} had non-zero exitcode {task.exitcode}')
         # stop all others if one failes
         _stop_all(all_tasks)
 
     if start_time and verbose:
         elapsed = time() - start_time
-        print(f'ℹ️  Machine "{task.name}" took {elapsed} seconds to complete.')
+        print(f'ℹ️ Machine "{task.machine_name}" took {elapsed} seconds to complete.')
 
     all_tasks.remove(task)
 
@@ -335,9 +336,12 @@ def _try_join_task(task: Task, all_tasks: list[Task],
 
     return True
 
-def join_all(tasks: list[Task], start_time=None,
-        verbose=True, timeout=None, use_sighandler=True, poll_interval=0.1):
-    ''' Wait for a set of tasks to terminate '''
+def join_all(tasks: list[Task], start_time=None, verbose=True,
+        timeout=None, use_sighandler=True, poll_interval=0.1) -> list[str]:
+    '''
+        Blocks until the given tasks have terminated.
+        This function returns a list of errors
+    '''
 
     errors: list[str] = []
     has_timed_out = False

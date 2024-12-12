@@ -1,6 +1,7 @@
 ''' This is part of the benchmark scripts. See __init__.py for more details. '''
 
 # pylint: disable=too-few-public-methods,fixme,too-many-arguments
+# pylint: disable=too-many-positional-arguments
 
 from typing import Any
 from copy import deepcopy

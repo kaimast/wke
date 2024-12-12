@@ -1,4 +1,4 @@
-#pylint: disable=too-many-locals,too-many-arguments
+#pylint: disable=too-many-locals,too-many-arguments,too-many-positional-arguments
 
 ''' Helper functions to run one measurement measurement with wke '''
 
