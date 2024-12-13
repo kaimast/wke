@@ -59,7 +59,7 @@ class MachineLogger:
         if len(msg) == 0:
             return #ignore
 
-        self._log(stdout, 'INFO', msg, self._verbose)
+        self._log(stdout, 'I', msg, self._verbose)
 
     def log_error(self, msg):
         ''' Log an error '''
@@ -67,7 +67,7 @@ class MachineLogger:
             return #ignore
 
         self._has_error = True
-        self._log(stderr, 'ERROR', msg, True)
+        self._log(stderr, 'E', msg, True)
 
     def _log(self, console, level: str, msg: str, verbose: bool):
         ''' Write output to console and log file '''

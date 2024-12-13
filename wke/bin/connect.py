@@ -2,7 +2,7 @@
 
 import subprocess
 
-from . import try_get_cluster
+from .helper import try_get_cluster
 
 def set_up_connect(subparsers):
     ''' Set up arguments for the `connect` command '''

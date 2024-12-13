@@ -77,15 +77,13 @@ def _print_targets(targets: dict):
     for name, about in targets.items():
         print(f" ⦿ {name}: {about}")
 
-
-
 def _show_config(args):
     ''' Show information about the configuration '''
 
     if args.cwd:
         os.chdir(args.cwd)
 
-    config = try_get_config(args.config)
+    config = try_get_config(args.config_name)
     meta = config.generate_metadata(verbose=args.verbose)
 
     if args.json:
