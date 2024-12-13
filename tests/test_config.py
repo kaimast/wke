@@ -2,7 +2,7 @@
 Unit tests for loading configurations
 '''
 
-# pylint: disable=missing-function-docstring,line-too-long
+# pylint: disable=missing-function-docstring
 
 from wke.config import Configuration
 
@@ -21,12 +21,16 @@ def test_basic():
     target = config.get_target("benchmark-tokio")
     assert target.command == '#! /bin/env python3\nprint("Just another test script")\n'
 
-    assert config.get_prelude_cmd('home-runner') == "export PATH=${PATH}:${HOME}/.local/bin:/usr/local/bin && export RUST_BACKTRACE=1 && "
+    expected = ("export PATH=${PATH}:${HOME}/.local/bin:/usr/local/bin && "
+                "export RUST_BACKTRACE=1 && ")
+    assert config.get_prelude_cmd('home-runner') == expected
 
 def test_inherit():
     config = Configuration('inherit', base_path='test-files/configs')
 
-    assert sorted(config.target_names) == sorted(['setup-rust', 'install-tokio', 'benchmark-tokio', 'install-smol', 'benchmark-smol'])
+    expected = sorted(['setup-rust', 'install-tokio', 'benchmark-tokio',
+        'install-smol', 'benchmark-smol'])
+    assert sorted(config.target_names) == expected
 
     # ensure arguments are overwritten
     target = config.get_target("setup-rust")
@@ -43,4 +47,6 @@ def test_inherit():
     target = config.get_target("benchmark-smol")
     assert target.command == '#! /bin/env python3\nprint("Another script, but for smol")\n'
 
-    assert config.get_prelude_cmd('home-runner') == "export PATH=${PATH}:${HOME}/.local/bin:/usr/local/bin && export RUST_BACKTRACE=1 && "
+    expected = ("export PATH=${PATH}:${HOME}/.local/bin:/usr/local/bin && "
+                "export RUST_BACKTRACE=1 && ")
+    assert config.get_prelude_cmd('home-runner') == expected

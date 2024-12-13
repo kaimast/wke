@@ -81,7 +81,7 @@ class Prelude:
         return cmd
 
 class Target:
-    ''' A make or run target '''
+    ''' A command that we can run on one or multiple mmachines '''
 
     def __init__(self, name, toml_config, path):
         self._name = name

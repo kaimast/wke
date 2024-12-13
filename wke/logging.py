@@ -52,14 +52,14 @@ class MachineLogger:
         if len(msg) == 0:
             return #ignore
 
-        self._log(stdout, 'META: ' + msg, True)
+        self._log(stdout, 'META', msg, True)
 
     def log_info(self, msg):
         ''' Log a regular message '''
         if len(msg) == 0:
             return #ignore
 
-        self._log(stdout, 'INFO: ' + msg, self._verbose)
+        self._log(stdout, 'INFO', msg, self._verbose)
 
     def log_error(self, msg):
         ''' Log an error '''
@@ -67,16 +67,16 @@ class MachineLogger:
             return #ignore
 
         self._has_error = True
-        self._log(stderr, 'ERROR: ' + msg, True)
+        self._log(stderr, 'ERROR', msg, True)
 
-    def _log(self, console, msg: str, verbose: bool):
+    def _log(self, console, level: str, msg: str, verbose: bool):
         ''' Write output to console and log file '''
 
         # Remove control codes
         msg = msg.replace('\x08', '')
 
         if verbose:
-            console.write(f"[{self._name}] {msg}\n")
+            console.write(f"[{self._name} {level}] {msg}\n")
 
         if self._log_file:
             # Remove color codes
