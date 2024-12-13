@@ -2,7 +2,7 @@
 Unit tests for loading cluster configurations
 '''
 
-# pylint: disable=missing-function-docstring,line-too-long
+# pylint: disable=missing-function-docstring
 
 from wke.cluster import Cluster
 

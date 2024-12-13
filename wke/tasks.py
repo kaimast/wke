@@ -20,7 +20,7 @@ class Task(Thread):
     '''
     Represents the connection to a machine in the cluster.
     
-    Usually, you will not use this directly but, instead, use, for exampe, run().
+    Usually, you will not use this directly, but use something like run() instead.
     '''
 
     def __init__(self, grp_index: int, machine_info, task_name: str, command: str,
@@ -40,7 +40,7 @@ class Task(Thread):
         self._verbose = verbose
         self._group_index = grp_index
         self._group_size = grp_size
-        self._username = cluster.username if username is None or username == "" else username
+        self._username = cluster.username if username in [None, ""] else username
         self.exitcode = None
         self.stop = Event()
         self.was_stopped = False
@@ -206,9 +206,12 @@ class Task(Thread):
 
                 transport = ssh.get_transport()
                 channel = transport.open_session()
-                channel.get_pty()
                 channel.set_combine_stderr(False)
                 channel.settimeout(1.0)
+
+                # Enabling pseudo terminal breaks stderr forwarding and should
+                # not be needed because we always only run a single command
+                # channel.get_pty()
 
                 # set up the agent request handler to handle agent requests from the server
                 paramiko.agent.AgentRequestHandler(channel)

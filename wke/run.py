@@ -8,6 +8,7 @@
 import multiprocessing
 
 from time import time
+from typing import Optional
 
 from .errors import RemoteExecutionError, RunTargetError
 from .util import bash_wrap
@@ -16,6 +17,9 @@ from .cluster import Cluster
 from .config import Configuration
 from .slice import Slice
 from .set import MachineSet
+
+# Can be set to let the configuration pick its default prelude
+DEFAULT_PRELUDE: str = ''
 
 def cleanup(selector, verbose: bool):
     ''' Clean up working directories on the specified selector '''
@@ -131,16 +135,14 @@ def _parse_options(target, options) -> tuple[list[str], str]:
 
     return (argv, ", ".join(argstr))
 
-def run(selector, config, target_name, options=None, verbose=False,
-        multiply=1, stdout=None, prelude=None, dry_run=False,
-        log_dir=None, timeout=None, debug=False, workdir=None,
-        quiet_fail=False) -> bool:
+def run(selector, config, target_name, options=None, verbose=False, multiply=1,
+        prelude: Optional[str] = DEFAULT_PRELUDE, dry_run=False, log_dir=None, timeout=None,
+        debug=False, workdir=None, quiet_fail=False) -> bool:
     ''' Runs the specified command(s) in the foreground '''
     try:
-        check_run(selector, config, target_name, options=options,
-            verbose=verbose, multiply=multiply, stdout=stdout,
-            prelude=prelude, dry_run=dry_run, log_dir=log_dir,
-            timeout=timeout, debug=debug, workdir=workdir)
+        check_run(selector, config, target_name, options=options, verbose=verbose,
+            multiply=multiply, prelude=prelude, dry_run=dry_run,
+            log_dir=log_dir, timeout=timeout, debug=debug, workdir=workdir)
         return True
     except RemoteExecutionError as err:
         if not quiet_fail:
@@ -149,8 +151,8 @@ def run(selector, config, target_name, options=None, verbose=False,
         return False
 
 def check_run(selector, config, target_name, options=None, verbose=False,
-        multiply=1, stdout=None, prelude=None, dry_run=False,
-        log_dir=None, timeout=None, debug=False, workdir=None):
+        multiply=1, prelude: Optional[str] = DEFAULT_PRELUDE,
+        dry_run=False, log_dir=None, timeout=None, debug=False, workdir=None):
     '''
         This behaves like `run` but, smilar to subprocess.check_call
         will throw an exception on failure
@@ -175,12 +177,13 @@ def check_run(selector, config, target_name, options=None, verbose=False,
 
     argv, argstr = _parse_options(target, options)
 
-    # Use default if not prelude is specified
-    if prelude is None:
-        prelude = config.default_prelude
-    # User explicitly specified to not use a prelude
-    elif prelude in ['None', 'none']:
+    # Support passing none as a string for compatibility
+    if prelude in ['None', 'none']:
         prelude = None
+
+    # Get default prelude if request by user
+    if prelude == DEFAULT_PRELUDE:
+        prelude = config.default_prelude
 
     start_time = time()
 
@@ -220,7 +223,6 @@ def check_run(selector, config, target_name, options=None, verbose=False,
                 verbose=verbose, grp_size=group_size,
                 prelude=prelude, log_dir=log_dir, debug=debug)
 
-            task.stdout = stdout
             tasks.append(task)
 
     for task in tasks:
