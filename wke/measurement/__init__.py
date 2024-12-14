@@ -1,23 +1,19 @@
-#pylint: disable=too-many-locals,too-many-arguments,too-many-positional-arguments
+# pylint: disable=too-many-locals,too-many-arguments,too-many-positional-arguments
 
 ''' Helper functions to run one measurement measurement with wke '''
 
-
-import select
-import sys
 import os
-import struct
 import multiprocessing
 
 from time import localtime, strftime, time
-from threading import Thread, Condition, Lock
+from typing import Optional
 
 from ..run import run, run_background
 from ..errors import MeasurementFailedError
-from ..tasks import join_all, Task
 from ..config import Configuration
 
 from .data_collector import DataCollector
+
 
 class MeasurementResult:
     ''' The output for MeasurementSession.measure '''
@@ -52,7 +48,7 @@ class MeasurementResult:
     @property
     def elapsed_time(self):
         ''' The time that elapsed while running the measurement '''
-        return self._end_time-self._start_time
+        return self._end_time - self._start_time
 
     @property
     def throughput(self):
@@ -63,9 +59,9 @@ class MeasurementResult:
     def num_operations(self):
         '''
             The numer of operations executed during this measurement.
-           
-            Note, this is not computed/measured but corresponds to whatever `num_operations` is
-            set to when calling MeasurementSession.measure().
+
+            Note, this is not computed/measured but corresponds to whatever
+            `num_operations` is set to when calling MeasurementSession.measure().
         '''
         return self._num_operations
 
@@ -75,6 +71,7 @@ class MeasurementResult:
         print("Options: " + ', '.join(f"{name}=`{value}`" for name,value in self.options))
         print(f"Elapsed: {self.elapsed_time}")
         print(f"Throughput: {self.throughput}")
+
 
 class MeasurementSession:
     ''' Logic encapsulating a single measurement run '''
@@ -93,11 +90,11 @@ class MeasurementSession:
         # Create the folder that will hold all log data
         os.mkdir(self.log_dir)
 
-        #make the measurement folder easier to find
+        # Make the measurement folder easier to find
         try:
             os.remove('current-measurement')
         except OSError:
-            pass #did not exist
+            pass  # did not exist
 
         os.symlink(self.log_dir, 'current-measurement')
 
@@ -130,33 +127,45 @@ class MeasurementSession:
             proc.terminate()
             proc.join()
 
-    def run(self, selector, target, options=None, prelude=None, timeout=None) -> bool:
+    def run(self, selector, target, config: Optional[Configuration] = None,
+            options=None, prelude=None, timeout=None) -> bool:
         '''
             Run a target as part of this session, but do not measure.
 
-            This is useful, for example, to prepare your measurement by setting up test data.
+            This is useful, for example, to prepare your measurement by setting up test
+            data.
         '''
-        return run(selector, self.config, target, prelude=prelude, options=options,
-                verbose=self._verbose, log_dir=self.log_dir, timeout=timeout)
+        if config is None:
+            config = self.config
+
+        return run(selector, config, target, prelude=prelude, options=options,
+                   verbose=self._verbose, log_dir=self.log_dir, timeout=timeout)
 
     def run_background(self, selector, target, options=None,
-        prelude=None, timeout=None) -> multiprocessing.Process:
+                       config: Optional[Configuration] = None,
+                       prelude: Optional[str] = None,
+                       timeout=None) -> multiprocessing.Process:
         '''
             Run a target in the background as part of this session.
-            This is useful, for example, to start a server process that you will measure again.
+            This is useful, for example, to start a server process that you will measure
+            again.
 
             To stop the background task either kill the returned Process object,
             or call stop_background_tasks().
         '''
-        proc = run_background(selector, self.config, target, prelude=prelude, options=options,
-                verbose=self._verbose, log_dir=self.log_dir, timeout=timeout)
+        if config is None:
+            config = self.config
+
+        proc = run_background(selector, config, target, prelude=prelude,
+                              options=options, verbose=self._verbose,
+                              log_dir=self.log_dir, timeout=timeout)
 
         self._background_tasks.append(proc)
         return proc
 
     def measure(self, selector, target, num_operations, options=None,
-        prelude=None, timeout=None) -> MeasurementResult:
-        ''' 
+                prelude=None, timeout=None) -> MeasurementResult:
+        '''
             Run the target and measure its performance/output.
 
             This must be called at most once per Session object and
@@ -174,7 +183,8 @@ class MeasurementSession:
 
             hostname = self._collect_statistics
 
-            data_collector = DataCollector(self.cluster, self.config, hostname, self.log_dir)
+            data_collector = DataCollector(self.cluster, self.config, hostname,
+                                           self.log_dir)
             data_collector.start()
 
             try:
@@ -185,7 +195,7 @@ class MeasurementSession:
         # Actually run the thing
         start = time()
         success = run(selector, self.config, target, prelude=prelude, options=options,
-                verbose=self._verbose, log_dir=self.log_dir, timeout=timeout)
+                      verbose=self._verbose, log_dir=self.log_dir, timeout=timeout)
         end = time()
 
         if not success:
@@ -201,11 +211,11 @@ class MeasurementSession:
         try:
             os.remove('current-measurement')
         except OSError:
-            pass #did not exist
+            pass  # did not exist
         try:
             os.remove('last-measurement')
         except OSError:
-            pass #did not exist
+            pass  # did not exist
 
         os.symlink(self.log_dir, 'last-measurement')
         return result
