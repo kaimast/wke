@@ -1,7 +1,7 @@
 ''' Utilities to handle connections to a remote machine '''
 
-#pylint: disable=too-many-instance-attributes,too-many-arguments,fixme
-#pylint: disable=too-many-positional-arguments
+# pylint: disable=too-many-instance-attributes,too-many-arguments,fixme
+# pylint: disable=too-many-positional-arguments
 
 from threading import Thread, Event
 from time import time, sleep
@@ -14,12 +14,13 @@ import paramiko
 from .errors import RemoteExecutionError
 from .logging import MachineLogger
 
-#TODO break this apart into multiple classes
-#TODO don't use a dedicated thread for every ssh connection
+
+# TODO break this apart into multiple classes
+# TODO don't use a dedicated thread for every ssh connection
 class Task(Thread):
     '''
     Represents the connection to a machine in the cluster.
-    
+
     Usually, you will not use this directly, but use something like run() instead.
     '''
 
@@ -27,7 +28,7 @@ class Task(Thread):
                 cluster, prelude=None, args=None, workdir="", verbose=False,
                 grp_size=1, username="", log_dir=None, debug=False):
 
-        #assert isinstance(cluster, Cluster) Creates cyclic dependency
+        # assert isinstance(cluster, Cluster) Creates cyclic dependency
         assert args is None or isinstance(args, list)
 
         self._machine_info = machine_info
@@ -112,7 +113,7 @@ class Task(Thread):
         for arg in self.args:
             args += " "
 
-            #TODO use an enum here
+            # TODO use an enum here
             if isinstance(arg, str) and len(arg) > 0 and arg[0] == "@":
                 if arg == "@GROUP_INDEX":
                     args += str(self.group_index)
@@ -152,10 +153,10 @@ class Task(Thread):
         args = self._generate_args()
 
         if 'python' in first_line:
-            for seq  in ["'''", "\"'", "'\""]:
+            for seq in ["'''", "\"'", "'\""]:
                 if seq in self.command:
                     raise RuntimeError(f'Python scripts containing <{seq}> are '
-                                        'not supported yet, use <"""> instead')
+                                       'not supported yet, use <"""> instead')
 
             code = self.command.replace('"', "'''")
             cmd += f'python3 -c "{code}" {args}'
@@ -176,7 +177,8 @@ class Task(Thread):
         try:
             cmd = self._generate_command()
         except RuntimeError as err:
-            self.exception = RemoteExecutionError(self.machine_name, self.task_name, str(err))
+            self.exception = RemoteExecutionError(
+                self.machine_name, self.task_name, str(err))
             return
 
         logger = MachineLogger(self.log_dir, self.machine_name, self._verbose)
@@ -213,7 +215,8 @@ class Task(Thread):
                 # not be needed because we always only run a single command
                 # channel.get_pty()
 
-                # set up the agent request handler to handle agent requests from the server
+                # set up the agent request handler to handle agent
+                # requests from the server
                 paramiko.agent.AgentRequestHandler(channel)
 
                 channel.exec_command(cmd)
@@ -234,7 +237,8 @@ class Task(Thread):
                             channel.send("\x03")
                             logger.log_meta(f'Sent Ctrl+C to "{self.name}"')
                         except socket.error as err:
-                            logger.log_meta(f'Failed to send Ctrl+C to "{self.name}": {err}')
+                            logger.log_meta(f'Failed to send '
+                                f'Ctrl+C to "{self.name}": {err}')
 
                     stdout_data, stderr_data = self._poll_ssh_connection(
                             stdout_data, stderr_data,
@@ -254,7 +258,7 @@ class Task(Thread):
 
     @staticmethod
     def _split_lines(data: bytes, log_func):
-        ''' See if data contains full line(s) and log them ''' 
+        ''' See if data contains full line(s) and log them '''
 
         lines = data.splitlines(keepends=True)
         newline1 = '\n'.encode()
@@ -267,7 +271,8 @@ class Task(Thread):
 
             try:
                 # Remove newline and backspace characters
-                string = line.decode('utf-8').replace('\r','').replace('\n','').replace('\b', '')
+                string = line.decode('utf-8') \
+                    .replace('\r','').replace('\n','').replace('\b', '')
                 log_func(string)
             except UnicodeDecodeError:
                 # Cannot decode yet
@@ -304,9 +309,11 @@ class Task(Thread):
 
         return (stdout_data, stderr_data)
 
+
 def _stop_all(tasks: list[Task]):
     for task in tasks:
         task.flag_stop()
+
 
 def _try_join_task(task: Task, all_tasks: list[Task],
             all_errors: list[str], start_time: float,
@@ -315,13 +322,14 @@ def _try_join_task(task: Task, all_tasks: list[Task],
     task.join(timeout=0.0)
 
     if task.is_alive():
-        return False # still running
+        return False  # still running
 
     if task.exitcode is None:
         print(f"⚠️  No exitcode for machine {task.machine_name}")
 
     if not task.was_stopped and task.exitcode != 0:
-        all_errors.append(f'Machine {task.machine_name} had non-zero exitcode {task.exitcode}')
+        all_errors.append(f'Machine {task.machine_name} had '
+                          f'non-zero exitcode {task.exitcode}')
         # stop all others if one failes
         _stop_all(all_tasks)
 
@@ -338,6 +346,7 @@ def _try_join_task(task: Task, all_tasks: list[Task],
         raise task.exception
 
     return True
+
 
 def join_all(tasks: list[Task], start_time=None, verbose=True,
         timeout=None, use_sighandler=True, poll_interval=0.1) -> list[str]:
@@ -374,7 +383,7 @@ def join_all(tasks: list[Task], start_time=None, verbose=True,
             has_timed_out = True
             _stop_all(tasks)
 
-        sleep(poll_interval)# stop all if one fails
+        sleep(poll_interval)  # stop all if one fails
 
     if has_timed_out:
         return []

@@ -1,6 +1,8 @@
-# pylint: disable=line-too-long,too-few-public-methods,too-many-arguments,missing-module-docstring
+# pylint: disable=line-too-long,too-few-public-methods,too-many-arguments,
+# pylint: disable=missing-module-docstring
 
 from __future__ import annotations
+from typing import Optional
 
 from .machines import MachineInfo
 
@@ -75,7 +77,10 @@ class Slice:
         return self._parent.get_machine_by_index(self._offset + index)
 
     def advance_cursor(self, advance_by: int):
-        ''' Advance the internal cusor by the specified number of steps '''
+        '''
+            Advance the internal cusor by the specified number of steps.
+            The cursor is used to determine where the next subslice starts
+        '''
         if self._cursor + advance_by > self._size:
             raise RuntimeError("Not enough machines left!")
         self._cursor += advance_by
@@ -93,6 +98,12 @@ class Slice:
         self._cursor = subslice_size
 
         return subslice
+
+    def create_subslice_from_remaining(self) -> Slice:
+        '''
+            Create a subslice containing all remaining machines.
+        '''
+        return self.create_subslice(self.remaining_size)
 
     @property
     def num_machines(self):
@@ -118,6 +129,17 @@ class Slice:
     def get_internal_address_by_index(self, idx: int) -> list[str]:
         ''' Get the internal addresses for all machines in this subslice '''
         return self.get_all_machines()[idx].internal_addr
+
+    def copy_file_to(self, source: str, target: str, username: Optional[str] = None):
+        ''' Copy a file from the local machine to all machines in this slice '''
+        for mname in self.machine_names:
+            self._cluster.copy_to(mname, source, target, username=username)
+
+    def copy_files_from(self, source: str, target: str, username: Optional[str] = None):
+        ''' Copy a file with the specified name from all machines in this slice
+            to the local machine '''
+        for mname in self.machine_names:
+            self._cluster.copy_to(mname, source, target, username=username)
 
     def open_remote_at_index(self, index: int, source: str):
         ''' Opens a file at the machine with the specified index '''

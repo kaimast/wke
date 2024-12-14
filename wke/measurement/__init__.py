@@ -6,7 +6,7 @@ import os
 import multiprocessing
 
 from time import localtime, strftime, time
-from typing import Optional
+from typing import Optional, Any
 
 from ..run import run, run_background
 from ..errors import MeasurementFailedError
@@ -128,7 +128,8 @@ class MeasurementSession:
             proc.join()
 
     def run(self, selector, target, config: Optional[Configuration] = None,
-            options=None, prelude=None, timeout=None) -> bool:
+            options: Optional[dict[str, Any]] = None, prelude: Optional[str] = None,
+            timeout=None) -> bool:
         '''
             Run a target as part of this session, but do not measure.
 

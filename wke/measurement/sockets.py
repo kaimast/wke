@@ -12,6 +12,7 @@ import errno
 
 TIMEOUT = 10
 
+
 class MessageType(IntEnum):
     ''' Message types supported '''
 
@@ -19,6 +20,7 @@ class MessageType(IntEnum):
     HI = 1
     # Send load information
     LOAD = 2
+
 
 class Peer:
     ''' Represents the connection to another machine/server '''
@@ -74,23 +76,23 @@ class Peer:
         while data and (pos < len(data)):
             header_len = struct.calcsize("IH")
 
-            if (len(data)-pos) < header_len:
+            if (len(data) - pos) < header_len:
                 self.prev = data[pos:]
                 data = None
                 break
 
-            array = struct.unpack("IH", data[pos:pos+header_len])
+            array = struct.unpack("IH", data[pos:pos + header_len])
             msg_len = array[0]
             msgtype = array[1]
             start = pos
             pos += header_len
 
             if msg_len > 0:
-                if len(data) < pos+msg_len:
+                if len(data) < pos + msg_len:
                     self.prev = data[start:]
                     break
 
-                content = data[pos:pos+msg_len]
+                content = data[pos:pos + msg_len]
                 pos += msg_len
 
                 self.messages.append((msgtype, content))
@@ -131,6 +133,7 @@ class Peer:
 
         self.socket.close()
         self.connected = False
+
 
 class SocketListener:
     ''' Allows accept connections from a TCP socket '''

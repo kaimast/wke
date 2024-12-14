@@ -2,6 +2,7 @@
 
 from .machines import MachineInfo
 
+
 class MachineSet:
     '''
     A set is a (potentially) no continuguous subset of a slice or cluster
@@ -13,7 +14,7 @@ class MachineSet:
             assert index < parent.num_machines
 
         self._cluster = cluster
-        self._parent = parent # the parent slice (or cluster itself)
+        self._parent = parent  # the parent slice (or cluster itself)
         self._indices = indices
 
     @property

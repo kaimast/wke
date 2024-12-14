@@ -7,9 +7,10 @@ import argparse
 from .cluster import Cluster
 from .tasks import Task, join_all
 
+
 def _main():
     parser = argparse.ArgumentParser(description='reboot a set of machines')
-    _args = parser.parse_args()
+    _ = parser.parse_args()
 
     cluster = Cluster()
 
@@ -23,6 +24,7 @@ def _main():
         tasks.append(task)
 
     join_all(tasks)
+
 
 if __name__ == "__main__":
     _main()
