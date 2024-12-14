@@ -129,18 +129,20 @@ class MeasurementSession:
 
     def run(self, selector, target, config: Optional[Configuration] = None,
             options: Optional[dict[str, Any]] = None, prelude: Optional[str] = None,
-            timeout=None) -> bool:
+            timeout=None, quiet_fail=False) -> bool:
         '''
             Run a target as part of this session, but do not measure.
 
             This is useful, for example, to prepare your measurement by setting up test
             data.
+            The options are identical to `wke.run`
         '''
         if config is None:
             config = self.config
 
         return run(selector, config, target, prelude=prelude, options=options,
-                   verbose=self._verbose, log_dir=self.log_dir, timeout=timeout)
+                   verbose=self._verbose, quiet_fail=quiet_fail,
+                   log_dir=self.log_dir, timeout=timeout)
 
     def run_background(self, selector, target, options=None,
                        config: Optional[Configuration] = None,

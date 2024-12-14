@@ -144,8 +144,19 @@ def _parse_options(target, options) -> tuple[list[str], str]:
 
 def run(selector, config, target_name, options=None, verbose=False, multiply=1,
         prelude: Optional[str] = DEFAULT_PRELUDE, dry_run=False, log_dir=None,
-        timeout=None, debug=False, workdir=None, quiet_fail=False) -> bool:
-    ''' Runs the specified command(s) in the foreground '''
+        timeout: Optional[float] = None, debug=False, workdir=None,
+        quiet_fail=False) -> bool:
+    '''
+        Runs the specified command(s) in the foreground
+
+        Options:
+            * verbose: Print more information to stdout?
+            * multiply: Run more than one task per machine?
+            * quiet_fail: Disable any output to stdout/stderr when the task
+                          is unsuccessful
+            * dry_run: Do not actually perform the task (for testing only)
+            * timeout: Give up after the specified duration (in seconds)
+    '''
     try:
         check_run(selector, config, target_name, options=options, verbose=verbose,
             multiply=multiply, prelude=prelude, dry_run=dry_run,
@@ -159,17 +170,20 @@ def run(selector, config, target_name, options=None, verbose=False, multiply=1,
 
 
 def check_run(selector, config, target_name, options=None, verbose=False,
-        multiply=1, prelude: Optional[str] = DEFAULT_PRELUDE,
+        multiply: int = 1, prelude: Optional[str] = DEFAULT_PRELUDE,
         dry_run=False, log_dir=None, timeout=None, debug=False, workdir=None):
     '''
         This behaves like `run` but, smilar to subprocess.check_call
-        will throw an exception on failure
+        will throw an exception on failure.
+
+        The options are identical to `run`.
     '''
 
     if not isinstance(selector, (Slice, Cluster, MachineSet)):
         raise ValueError("selector is not a slice, cluster, or machine set")
 
     assert isinstance(config, Configuration)
+    assert multiply > 0
 
     if target_name == "install-packages":
         if debug:
