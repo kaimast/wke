@@ -21,6 +21,7 @@ from .set import MachineSet
 # Can be set to let the configuration pick its default prelude
 DEFAULT_PRELUDE: str = ''
 
+
 def cleanup(selector, verbose: bool):
     ''' Clean up working directories on the specified selector '''
 
@@ -31,12 +32,13 @@ def cleanup(selector, verbose: bool):
 
     for minfo in selector.get_all_machines():
         if verbose:
-            print(f'Cleaning up home directory "{selector.workdir}" on machine\"{minfo.name}"')
+            print(f'Cleaning up home directory "{selector.workdir}" on '
+                  f'machine\"{minfo.name}"')
 
         # bash might not be the default shell
         cmd = bash_wrap([f"rm -rf {selector.workdir}/*"])
         machine = Task(0, minfo, "cleanup", cmd, selector.cluster,
-                        verbose=verbose, username="root")
+                       verbose=verbose, username="root")
         machine.start()
         connections.append(machine)
 
@@ -45,12 +47,14 @@ def cleanup(selector, verbose: bool):
 
     return len(errors) == 0
 
+
 def _builtin_install_packages(selector, config: Configuration, verbose: bool,
         use_sudo=True, dry_run=False):
     '''
-    Install all debian packages required by the config on the specified selector
+        Install all debian packages required by the config on the specified selector
 
-    This uses sudo by default, but you can also run as root and without sudo by setting sudo=False
+        This uses sudo by default, but you can also run as root and without sudo by
+        setting sudo=False
     '''
 
     if not isinstance(selector, (Slice, Cluster, MachineSet)):
@@ -83,16 +87,16 @@ def _builtin_install_packages(selector, config: Configuration, verbose: bool,
         return
 
     for minfo in machines:
-        add_repos = [sudo+"apt-add-repository "+repo for repo in repos]
+        add_repos = [sudo + "apt-add-repository " + repo for repo in repos]
 
         # bash might not be the default shell
         command = bash_wrap(add_repos + [
-            sudo+"apt-get update",
-            sudo+"apt-get install -y " + " ".join(packages)
+            sudo + "apt-get update",
+            sudo + "apt-get install -y " + " ".join(packages)
         ])
 
         task = Task(0, minfo, "install-packages", command,
-                        selector.cluster, verbose=verbose, username=user)
+                    selector.cluster, verbose=verbose, username=user)
         task.start()
         tasks.append(task)
 
@@ -101,6 +105,7 @@ def _builtin_install_packages(selector, config: Configuration, verbose: bool,
 
     if len(errors) > 0:
         raise RunTargetError("install-package", errors)
+
 
 def _parse_options(target, options) -> tuple[list[str], str]:
     '''
@@ -130,15 +135,28 @@ def _parse_options(target, options) -> tuple[list[str], str]:
     # Check if there were any invalid options specified
     if options:
         for name in options.keys():
-            raise ValueError(f'Got unexpected option "{name}" for target "{target.name}". '
+            raise ValueError(f'Got unexpected option "{name}" for target '
+                             f'"{target.name}". '
                              f'Allowed options are {target.argument_names}')
 
     return (argv, ", ".join(argstr))
 
+
 def run(selector, config, target_name, options=None, verbose=False, multiply=1,
-        prelude: Optional[str] = DEFAULT_PRELUDE, dry_run=False, log_dir=None, timeout=None,
-        debug=False, workdir=None, quiet_fail=False) -> bool:
-    ''' Runs the specified command(s) in the foreground '''
+        prelude: Optional[str] = DEFAULT_PRELUDE, dry_run=False, log_dir=None,
+        timeout: Optional[float] = None, debug=False, workdir=None,
+        quiet_fail=False) -> bool:
+    '''
+        Runs the specified command(s) in the foreground
+
+        Options:
+            * verbose: Print more information to stdout?
+            * multiply: Run more than one task per machine?
+            * quiet_fail: Disable any output to stdout/stderr when the task
+                          is unsuccessful
+            * dry_run: Do not actually perform the task (for testing only)
+            * timeout: Give up after the specified duration (in seconds)
+    '''
     try:
         check_run(selector, config, target_name, options=options, verbose=verbose,
             multiply=multiply, prelude=prelude, dry_run=dry_run,
@@ -150,18 +168,22 @@ def run(selector, config, target_name, options=None, verbose=False, multiply=1,
 
         return False
 
+
 def check_run(selector, config, target_name, options=None, verbose=False,
-        multiply=1, prelude: Optional[str] = DEFAULT_PRELUDE,
+        multiply: int = 1, prelude: Optional[str] = DEFAULT_PRELUDE,
         dry_run=False, log_dir=None, timeout=None, debug=False, workdir=None):
     '''
         This behaves like `run` but, smilar to subprocess.check_call
-        will throw an exception on failure
+        will throw an exception on failure.
+
+        The options are identical to `run`.
     '''
 
     if not isinstance(selector, (Slice, Cluster, MachineSet)):
         raise ValueError("selector is not a slice, cluster, or machine set")
 
     assert isinstance(config, Configuration)
+    assert multiply > 0
 
     if target_name == "install-packages":
         if debug:
@@ -217,7 +239,7 @@ def check_run(selector, config, target_name, options=None, verbose=False,
 
     for (pos, minfo) in enumerate(machines):
         for i in range(multiply):
-            task = Task(pos*multiply+i, minfo,
+            task = Task(pos * multiply + i, minfo,
                 target.name, target.command,
                 selector.cluster, args=argv, workdir=workdir,
                 verbose=verbose, grp_size=group_size,
@@ -232,6 +254,7 @@ def check_run(selector, config, target_name, options=None, verbose=False,
 
     if len(errs) > 0:
         raise RunTargetError(target.name, errs)
+
 
 def run_background(*args, **kwargs) -> multiprocessing.Process:
     ''' Runs the specified command(s) in the background '''

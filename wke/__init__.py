@@ -11,3 +11,10 @@ from .plot_loads import plot_loads
 from .measurement import MeasurementSession, MeasurementResult
 from .slice import Slice
 from .set import MachineSet
+
+__all__ = [
+    "ConfigurationError", "ClusterError", "BenchmarkError", "MeasurementFailedError",
+    "RemoteExecutionError", "RunTargetError", "Cluster", "Configuration", "run",
+    "check_run", "run_background", "plot_loads", "MeasurementSession",
+    "MeasurementResult","Slice", "MachineSet"
+]

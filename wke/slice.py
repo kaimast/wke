@@ -1,25 +1,29 @@
-# pylint: disable=line-too-long,too-few-public-methods,too-many-arguments,missing-module-docstring
+# pylint: disable=line-too-long,too-few-public-methods,too-many-arguments,
+# pylint: disable=missing-module-docstring
 
 from __future__ import annotations
+from typing import Optional
 
 from .machines import MachineInfo
+
 
 class Slice:
     '''
     A slice is a set of machines that you can run tasks on.
-    When execution multiple tasks concurrently, the slice ensures no machine executes more than one task at once.
+    When execution multiple tasks concurrently, the slice ensures no
+    machine executes more than one task at once.
 
     Slices can be a subset of another slice or the cluster itself
     '''
     def __init__(self, cluster, parent, offset: int, size: int):
         assert offset >= 0
-        assert size >= 0 # Slices can be empty
+        assert size >= 0  # Slices can be empty
         assert cluster
 
-        assert offset+size <= parent.num_machines
+        assert offset + size <= parent.num_machines
 
         self._cluster = cluster
-        self._parent = parent # the parent slice (or cluster itself)
+        self._parent = parent  # the parent slice (or cluster itself)
         self._offset = offset
         self._size = size
 
@@ -44,11 +48,12 @@ class Slice:
         else:
             num_machines = self._size
 
-        return self._cluster.open_remote(filename, skip_missing=skip_missing, num_machines=num_machines, offset=self._offset)
+        return self._cluster.open_remote(filename, skip_missing=skip_missing,
+                                         num_machines=num_machines, offset=self._offset)
 
     def get_all_machines(self):
         ''' Get the information for all machines in this slice '''
-        return self._parent.get_all_machines()[self._offset:self._offset+self._size]
+        return self._parent.get_all_machines()[self._offset:self._offset + self._size]
 
     @property
     def machine_names(self) -> list[str]:
@@ -69,10 +74,13 @@ class Slice:
 
     def get_machine_by_index(self, index: int) -> MachineInfo:
         ''' Get the information for a machine with the specified index '''
-        return self._parent.get_machine_by_index(self._offset+index)
+        return self._parent.get_machine_by_index(self._offset + index)
 
     def advance_cursor(self, advance_by: int):
-        ''' Advance the internal cusor by the specified number of steps '''
+        '''
+            Advance the internal cusor by the specified number of steps.
+            The cursor is used to determine where the next subslice starts
+        '''
         if self._cursor + advance_by > self._size:
             raise RuntimeError("Not enough machines left!")
         self._cursor += advance_by
@@ -91,6 +99,12 @@ class Slice:
 
         return subslice
 
+    def create_subslice_from_remaining(self) -> Slice:
+        '''
+            Create a subslice containing all remaining machines.
+        '''
+        return self.create_subslice(self.remaining_size)
+
     @property
     def num_machines(self):
         ''' How many machines are in this slice? '''
@@ -102,7 +116,10 @@ class Slice:
         return self._size - self._cursor
 
     def get_absolute_index(self, idx: int) -> int:
-        ''' Get the absolute position in the list of all machines from an index in this slice ''' 
+        '''
+            Get the absolute position in the list of all machines from
+            an index in this slice
+        '''
         return self._parent.get_absolute_index(self._offset + idx)
 
     def get_address_by_index(self, idx: int) -> list[str]:
@@ -113,6 +130,16 @@ class Slice:
         ''' Get the internal addresses for all machines in this subslice '''
         return self.get_all_machines()[idx].internal_addr
 
+    def copy_file_to(self, source: str, target: str, username: Optional[str] = None):
+        ''' Copy a file from the local machine to all machines in this slice '''
+        for mname in self.machine_names:
+            self._cluster.copy_to(mname, source, target, username=username)
+
+    def copy_files_from(self, source: str, target: str, username: Optional[str] = None):
+        ''' Copy a file with the specified name from all machines in this slice
+            to the local machine '''
+        for mname in self.machine_names:
+            self._cluster.copy_to(mname, source, target, username=username)
 
     def open_remote_at_index(self, index: int, source: str):
         ''' Opens a file at the machine with the specified index '''

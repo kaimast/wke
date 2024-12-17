@@ -2,7 +2,7 @@
 
 # pylint: disable=fixme,consider-using-with,too-many-arguments,too-many-branches
 
-from typing import Optional
+from typing import Optional, Any
 from subprocess import call
 
 import shlex
@@ -56,16 +56,14 @@ class Cluster:
         else:
             raise RuntimeError('"machines" is neither a dictionariy nor a list')
 
-    def generate_metadata(self):
+    def generate_metadata(self) -> dict[str, Any]:
         ''' Create a dictionary containing information about this cluster '''
 
         machines = {}
         for info in self._machines:
             machines[info.name] = info.generate_metadata()
 
-        return {
-            "machines": machines 
-        }
+        return { "machines": machines }
 
     def _parse_machine(self, name, machine_def):
         '''
@@ -76,7 +74,8 @@ class Cluster:
             if "external_addr" in machine_def:
                 external_addr = machine_def["external_addr"]
             else:
-                raise RuntimeError(f"Machine definition is missing external address: {machine_def}")
+                raise RuntimeError(f"Machine definition is missing external address: "
+                                   f"{machine_def}")
 
             if "internal_addr" in machine_def:
                 internal_addr = machine_def["internal_addr"]
@@ -119,16 +118,22 @@ class Cluster:
 
     @property
     def workdir(self) -> str:
-        ''' Returns the working directory that will be used when running scripts on the cluster '''
+        '''
+            Returns the working directory that will be used when running scripts
+            on the cluster
+        '''
         workdir = self.cluster_toml["cluster"].get("workdir", None)
         if workdir:
             return workdir
 
-        return "/home/"+self.username
+        return "/home/" + self.username
 
     @property
     def username(self) -> str:
-        ''' Returns the default username that will be used when ssh-ing into the cluster '''
+        '''
+            Returns the default username that will be used when ssh-ing
+            into the cluster
+        '''
         return self.cluster_toml["cluster"]["username"]
 
     @property
@@ -202,8 +207,14 @@ class Cluster:
         ''' Get the names of all machines in this cluster '''
         return [minfo.name for minfo in self.get_all_machines()]
 
-    def copy_to(self, machine: str, src: str, destination: str, username=None):
-        ''' Copy a file from the local computer to a machine '''
+    def copy_to(self, machine: str, src: str, destination: str,
+                username: Optional[str] = None):
+        '''
+            Copy a file from the local computer to a machine.
+
+            The username flag determines as which user we invoke SSH
+            (will be the clusters default user if not specified)
+        '''
 
         if not username:
             username = self.username
@@ -219,7 +230,8 @@ class Cluster:
         print(src + " @ " + machine + " -> " + destination)
         return call(shlex.split('rsync -zrp --rsh="ssh -o UserKnownHostsFile=/dev/null -p'
             + str(self.ssh_port) + ' -o StrictHostKeyChecking=no" ' + self.username
-            + "@" + self.get_machine(machine).external_addr + ":" + src + " " + destination))
+            + "@" + self.get_machine(machine).external_addr + ":"
+            + src + " " + destination))
 
     def execute_on(self, machine: str, cmd: str):
         ''' Execute a single command on a machine '''
@@ -232,7 +244,8 @@ class Cluster:
 
             # Connection setup can take quite long with a large cluster
             # better to be conservative here with the banner_timeout
-            ssh.connect(address, username=self.username, port=self.ssh_port, banner_timeout=60)
+            ssh.connect(address, username=self.username, port=self.ssh_port,
+                        banner_timeout=60)
 
             transport = ssh.get_transport()
             if not transport:
@@ -273,10 +286,10 @@ class Cluster:
         result = []
 
         all_machines = self.get_all_machines()
-        if offset+num_machines > len(all_machines):
+        if offset + num_machines > len(all_machines):
             raise RuntimeError("Invalid offset or num_machines")
 
-        for minfo in all_machines[offset:offset+num_machines]:
+        for minfo in all_machines[offset:offset + num_machines]:
             target = "/tmp/cluster_" + minfo.name
             print(f'{minfo.name}:{filename} -> {target}')
 

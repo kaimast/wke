@@ -6,21 +6,18 @@
 import sys
 import argparse
 import copy
-import tomllib
 
 from typing import Any
-from time import localtime, strftime, sleep
-from copy import deepcopy
-from os import path, rename
+from time import sleep
+from os import rename
 from os.path import isfile, getmtime
 
-from seaborn import lineplot, set_theme #type: ignore
-from matplotlib import pyplot
-
-from ..errors import BenchmarkError, ClusterError, ConfigurationError
+from ..errors import ClusterError, ConfigurationError
 from .printer import ResultPrinter
-from .params import parse_parameters, ExponentialSteps, LinearSteps, ListSteps, Parameter, ParameterSet, SubparamSteps
+from .params import parse_parameters, ExponentialSteps, LinearSteps, ListSteps
+from .params import Parameter, ParameterSet
 from .toml import parse_toml
+
 
 # TODO move this into result printer
 def _run_benchmark(benchmark_func, parameters: dict[str, Parameter],
@@ -39,7 +36,7 @@ def _run_benchmark(benchmark_func, parameters: dict[str, Parameter],
     if prev_results is not None:
         conditions = []
         for name, value in parameters.items():
-            #TODO also check constants
+            # TODO also check constants
             if name in result_printer.variables:
                 conditions.append((prev_results[name] == value))
 
@@ -67,6 +64,7 @@ def _run_benchmark(benchmark_func, parameters: dict[str, Parameter],
         # give some time to wind down
         sleep(cooldown_time)
 
+
 def parse_constants(config: dict[str, Parameter], args: dict[str, Any]):
     ''' Parses parameters set to a constant value '''
 
@@ -86,13 +84,16 @@ def parse_constants(config: dict[str, Parameter], args: dict[str, Any]):
             sys.exit(-1)
 
         parameter.value = value
-        print(f'🔬 Setting "{key}" to constant value "{value}" (type: {parameter.type_name})')
+        print(f'🔬 Setting "{key}" to constant value "{value}" '
+              f'(type: {parameter.type_name})')
         parameter.value = value
         constant_set[key] = value
 
     return constant_set
 
-def parse_linear_steps(variables: set[str], steps: list[Any], default_config: dict[str, Parameter], linear_args):
+
+def parse_linear_steps(variables: set[str], steps: list[Any],
+                       default_config: dict[str, Parameter], linear_args):
     ''' Converts an argument specification of linear steps in to LinearSteps objects '''
 
     for string in linear_args:
@@ -115,7 +116,8 @@ def parse_linear_steps(variables: set[str], steps: list[Any], default_config: di
         step_args = tuple(map(int, value.split(':')))
 
         if len(step_args) != 3:
-            print(f'💥 Linear ranges need three arguments (like so "start:end:step_size"). '
+            print(f'💥 Linear ranges need three arguments '
+                  f'(like so "start:end:step_size"). '
                   f'Got "{value}" for key "{key}"')
             sys.exit(-1)
 
@@ -131,8 +133,12 @@ def parse_linear_steps(variables: set[str], steps: list[Any], default_config: di
         steps.append(LinearSteps(key, start, end, step_size))
         variables.add(key)
 
-def parse_exponential_steps(variables: set[str], steps: list[Any], default_config: dict[str, Parameter], linear_args):
-    ''' Converts an argument specification of exponential in to ExponentialSteps objects '''
+
+def parse_exponential_steps(variables: set[str], steps: list[Any],
+                            default_config: dict[str, Parameter], linear_args):
+    '''
+        Converts an argument specification of exponential in to ExponentialSteps objects
+    '''
 
     for string in linear_args:
         try:
@@ -154,7 +160,8 @@ def parse_exponential_steps(variables: set[str], steps: list[Any], default_confi
         step_args = tuple(map(int, value.split(':')))
 
         if len(step_args) != 4:
-            print(f'💥 Exponential ranges need four arguments (like so "base:start:end:step_size"). '
+            print(f'💥 Exponential ranges need four arguments '
+                  f'(like so "base:start:end:step_size"). '
                   f'Got "{value}" for key "{key}"')
             sys.exit(-1)
 
@@ -171,7 +178,8 @@ def parse_exponential_steps(variables: set[str], steps: list[Any], default_confi
         variables.add(key)
 
 
-def parse_list_steps(variables: set[str], steps: list, default_config: dict[str, Parameter], list_args):
+def parse_list_steps(variables: set[str], steps: list,
+                     default_config: dict[str, Parameter], list_args):
     ''' Converts an arguments of parameter list steps into a ListStep objects '''
 
     for string in list_args:
@@ -194,6 +202,7 @@ def parse_list_steps(variables: set[str], steps: list, default_config: dict[str,
         steps.append(ListSteps(key, list_steps, parameter.type))
         variables.add(key)
 
+
 def plot_from_toml(default_config: dict[str, Parameter], args):
     ''' Generate plots for a toml file without re-running experiments '''
 
@@ -209,11 +218,12 @@ def plot_from_toml(default_config: dict[str, Parameter], args):
 
     result_printer.update_plots(force=True)
 
+
 def parse_previous_results(args, outfile: str):
     ''' Checks if there are results from a previous run and attempts to reuse them '''
 
     # load pandas lazily
-    from pandas import read_csv # pylint: disable=import-outside-toplevel
+    from pandas import read_csv  # pylint: disable=import-outside-toplevel
 
     if outfile is None or not isfile(outfile):
         return None
@@ -226,7 +236,8 @@ def parse_previous_results(args, outfile: str):
 
     if getmtime(args.filename) > getmtime(outfile):
         if args.force_reuse:
-            print(f"ℹ️  Existing file {outfile} appears to be outdated, but reuse was forced!")
+            print(f"ℹ️  Existing file {outfile} appears to be outdated, "
+                  f"but reuse was forced!")
         else:
             print(f"ℹ️  Found existing file {outfile}, but appears to be outdated. "
                   f"Will not use results and rename it to {outfile}.old")
@@ -236,13 +247,15 @@ def parse_previous_results(args, outfile: str):
         print(f"ℹ️  Found existing file {outfile}. Will reuse results.")
 
     return read_csv(outfile, comment='#', header=0,
-                        skipinitialspace=True)
+                    skipinitialspace=True)
 
 
-def run_from_toml(default_config: dict[str, Parameter], benchmark_func, args, cooldown_time: int):
+def run_from_toml(default_config: dict[str, Parameter], benchmark_func,
+                  args, cooldown_time: int):
     ''' Run experiments as defined in a toml file '''
 
-    (steps, variables, hill_climb, name, num_iterations, plots) = parse_toml(args.filename, default_config)
+    (steps, variables, hill_climb, name, num_iterations, plots) = \
+        parse_toml(args.filename, default_config)
 
     outfile = f"results/{name}.csv"
     prev_results = parse_previous_results(args, outfile)
@@ -258,7 +271,6 @@ def run_from_toml(default_config: dict[str, Parameter], benchmark_func, args, co
 
         hill_climb = (plots[0]["y-axis"], plots[0].get("sort-by", None))
 
-
     result_printer = ResultPrinter(outfile, variables, name=name,
                                    prev_results=prev_results,
                                    plots=plots)
@@ -273,7 +285,9 @@ def run_from_toml(default_config: dict[str, Parameter], benchmark_func, args, co
                        cooldown_time=cooldown_time, prev_results=prev_results)
         config = params.next()
 
-def run_from_cmdline(base_config: dict[str, Any], benchmark_func, args, cooldown_time: int):
+
+def run_from_cmdline(base_config: dict[str, Any], benchmark_func,
+                     args, cooldown_time: int):
     ''' Run directly from the command line and do not parse a toml file '''
 
     print("## Arguments:")
@@ -298,7 +312,6 @@ def run_from_cmdline(base_config: dict[str, Any], benchmark_func, args, cooldown
 
     result_printer = ResultPrinter(args.outfile, variables)
 
-
     params = ParameterSet(steps, variables, constant_map)
     config = params.next()
 
@@ -311,13 +324,17 @@ def run_from_cmdline(base_config: dict[str, Any], benchmark_func, args, cooldown
                        cooldown_time=cooldown_time, prev_results=prev_results)
         config = params.next()
 
+
 def benchmark_main(base_config: dict[str, Any], benchmark_func, cooldown_time=5):
     ''' Runs benchmark_func across all specified parameters '''
 
     base_config = parse_parameters(base_config)
-    parser = argparse.ArgumentParser(description="Script to run one or a set of automated benchmarks")
+    parser = argparse.ArgumentParser(
+                        description="Script to run one or a set of automated benchmarks")
     parser.add_argument("--collect-statistics", required=False, type=str,
-                        help="If you want to collect metrics about the CPU and network utilization of individual machines, set this to the hostname of the machine running the benchmark script.")
+                        help=("If you want to collect metrics about the CPU and network "
+                              "utilization of individual machines, set this to the "
+                              "hostname of the machine running the benchmark script."))
 
     subparser = parser.add_subparsers(dest='command')
 
@@ -326,20 +343,29 @@ def benchmark_main(base_config: dict[str, Any], benchmark_func, cooldown_time=5)
 
     cmd_parser = subparser.add_parser("cmdline")
     cmd_parser.add_argument("--outfile", type=str,
-                            help="Don't start a new log file but append to an existing one (or create a new one with a custom name)")
+                            help=("Don't start a new log file but append to an existing "
+                                  "one (or create a new one with a custom name)"))
     cmd_parser.add_argument("--verbose", action="store_true",
                             help="Print output from individual machines to stdout")
     cmd_parser.add_argument("--num-warmups", default=0, type=int,
                             help="How many warmup iterations per configuration.")
     cmd_parser.add_argument("--num-iterations", default=1, type=int,
-                            help="How many iterations per configuration. This is useful if you want to capture deviations or percentiles")
+                            help=("How many iterations per configuration. This is useful "
+                                 "if you want to capture deviations or percentiles"))
     cmd_parser.add_argument("-C", action='append', type=str,
                             help="Set a constant value for a specific parameter")
     cmd_parser.add_argument("-R", action='append', type=str,
-                            help="Set a linear rnage for a specific parameter. The script will run a separate experiment for each of them")
+                            help=("Set a linear rnage for a specific parameter. The "
+                                  "will run a separate experiment for each of "
+                                  "them."))
     cmd_parser.add_argument("-E", action='append', type=str,
-                            help="Set a exponential range for a specific parameter. The script will run a separate experiment for each of them")
-    cmd_parser.add_argument("-L", action='append', type=str, help="Set a list of values for a specific parameter. The script will run a separate experiment for each of them")
+                            help=("Set a exponential range for a specific parameter. "
+                                  "The script will run a separate experiment for each "
+                                  "of them."))
+    cmd_parser.add_argument("-L", action='append', type=str,
+                            help=("Set a list of values for a specific parameter. "
+                                  "The script will run a separate experiment for "
+                                  "each of them."))
 
     toml_parser = subparser.add_parser("toml")
     toml_parser.add_argument("filename", type=str)

@@ -11,6 +11,7 @@ import json
 
 from .cluster import Cluster
 
+
 def _find_start_end(statsfile, logfile):
     mstart = -1
     mend = -1
@@ -34,6 +35,7 @@ def _find_start_end(statsfile, logfile):
                 print("Start is < 0!")
 
     return (mstart, mend)
+
 
 def plot_loads(logfolder, outfile, machine_index=None):
     ''' Creates a plot from a loads.csv file '''
@@ -83,7 +85,7 @@ def plot_loads(logfolder, outfile, machine_index=None):
                     if pos == 1:
                         val = val * 100.0
                     elif pos in [2, 3, 4, 5]:
-                        val = val/(1024*1024)
+                        val = val / (1024 * 1024)
                 except TypeError:
                     print(f"Failed to parse '{val}'. Not a number?")
                     val = 0.0
@@ -95,7 +97,7 @@ def plot_loads(logfolder, outfile, machine_index=None):
         colors = ['r', 'g', 'b', 'y', 'black', 'grey']
         linestyles = ['-', '--', '-.', ':']
 
-        plt.subplot(len(titles), 1, pos+1)
+        plt.subplot(len(titles), 1, pos + 1)
 
         for idx, (name, values) in enumerate(loads.items()):
             plt.plot(data.index, values, colors[idx % len(colors)], label=name,
