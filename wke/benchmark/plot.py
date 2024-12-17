@@ -1,12 +1,11 @@
 ''' This is part of the benchmark scripts. See __init__.py for more details. '''
 
-# pylint: disable=too-many-locals,too-many-branches,too-many-arguments,line-too-long,too-many-statements,too-many-positional-arguments
-
 from subprocess import call
 
 from pandas import read_csv
-from seaborn import lineplot, barplot, set_theme # type: ignore
+from seaborn import lineplot, barplot, set_theme  # type: ignore
 from matplotlib import pyplot
+
 
 def _parse_equation(equation, data):
     if isinstance(equation, str):
@@ -17,19 +16,21 @@ def _parse_equation(equation, data):
 
     match equation["op"]:
         case "mul":
-            return left*right
+            return left * right
         case "div":
-            return left/right
+            return left / right
         case "add":
-            return left+right
+            return left + right
         case "sub":
-            return left-right
+            return left - right
         case _:
             raise RuntimeError("Unsupported operation: {equation['op']}")
+
 
 def plot_script(path: str, args: list[str]):
     ''' Calls a custom script to create a plot '''
     call([path] + args)
+
 
 def _maximize_data_by(data, x_axis, y_axis, maximize_by, sort_by=None):
     sort_vals = [None] if sort_by is None else data[sort_by].unique()
@@ -62,15 +63,19 @@ def _maximize_data_by(data, x_axis, y_axis, maximize_by, sort_by=None):
             if sort_val is None:
                 pred = (data[x_axis] != x_val) | (data[maximize_by] == prev_val)
             else:
-                pred = (data[x_axis] != x_val) | (data[sort_by] != sort_val) | (data[maximize_by] == prev_val)
+                pred = (data[x_axis] != x_val) | (data[sort_by] != sort_val) | \
+                       (data[maximize_by] == prev_val)
 
             data = data[pred]
 
     return data
 
-def plot_bars(infile: str, outfile: str, x_axis: str, y_axis, title: str, legend_location="best",
-              sort_by=None, maximize_by=None, filter_by=None, x_scale="linear", y_scale="linear", sort_labels=None,
-              normalize_by=None, x_label=None, y_label=None, font_size=12, plot_scale=1.0, style="whitegrid"):
+
+def plot_bars(infile: str, outfile: str, x_axis: str, y_axis, title: str,
+              legend_location="best", sort_by=None, maximize_by=None, filter_by=None,
+              x_scale="linear", y_scale="linear", sort_labels=None,
+              normalize_by=None, x_label=None, y_label=None, font_size=12,
+              plot_scale=1.0, style="whitegrid"):
     ''' Creates a bar plot for an experiment '''
 
     print("📈 Generating line plot")
@@ -101,7 +106,7 @@ def plot_bars(infile: str, outfile: str, x_axis: str, y_axis, title: str, legend
 
     set_theme(style=style)
 
-    pyplot.figure(figsize=(4*plot_scale,3*plot_scale))
+    pyplot.figure(figsize=(4 * plot_scale,3 * plot_scale))
     pyplot.tight_layout()
     pyplot.title(title)
 
@@ -113,8 +118,9 @@ def plot_bars(infile: str, outfile: str, x_axis: str, y_axis, title: str, legend
         data[sort_by] = data[sort_by].replace(sort_labels)
 
     for (pos, suby) in enumerate(y_axis):
-        axis = pyplot.subplot(len(y_axis), 1, pos+1)
-        barplot(x=x_axis, y=f'_y_val{pos}', errorbar='sd', ax=axis, hue=sort_by, data=data,
+        axis = pyplot.subplot(len(y_axis), 1, pos + 1)
+        barplot(x=x_axis, y=f'_y_val{pos}', errorbar='sd',
+                ax=axis, hue=sort_by, data=data,
                 native_scale=True, hue_norm=normalize_by)
         axis.set_xscale(x_scale)
         axis.set_yscale(y_scale)
@@ -126,7 +132,7 @@ def plot_bars(infile: str, outfile: str, x_axis: str, y_axis, title: str, legend
 
         axis.legend(fontsize=font_size, loc=legend_location)
 
-        at_end = pos+1 == len(y_axis)
+        at_end = pos + 1 == len(y_axis)
 
         if at_end:
             if x_label is None:
@@ -145,17 +151,22 @@ def plot_bars(infile: str, outfile: str, x_axis: str, y_axis, title: str, legend
 
     _save_plot(outfile)
 
+
 def _save_plot(outfile):
     try:
         pyplot.savefig(outfile, bbox_inches='tight')
         pyplot.clf()
         print(f"📈 Wrote plot to {outfile}")
     except FileNotFoundError as err:
-        raise RuntimeError(f'Failed to write plot to "{outfile}". Does the folder exist?') from err
+        raise RuntimeError(f'Failed to write plot to "{outfile}". '
+                           f'Does the folder exist?') from err
 
-def plot_lines(infile: str, outfile: str, x_axis: str, y_axis, label: str, legend_location='best',
-               sort_by=None, maximize_by=None, filter_by=None, x_scale="linear", y_scale="linear", sort_labels=None,
-               set_xticks=False, x_label=None, y_label=None, font_size=12, plot_scale=1.0, style='whitegrid'):
+
+def plot_lines(infile: str, outfile: str, x_axis: str, y_axis, label: str,
+               legend_location='best', sort_by=None, maximize_by=None, filter_by=None,
+               x_scale="linear", y_scale="linear", sort_labels=None,
+               set_xticks=False, x_label=None, y_label=None, font_size=12,
+               plot_scale=1.0, style='whitegrid'):
     ''' Creates a line plot for an experiment '''
 
     print("📈 Generating line plot")
@@ -186,7 +197,7 @@ def plot_lines(infile: str, outfile: str, x_axis: str, y_axis, label: str, legen
 
     set_theme(style=style)
 
-    pyplot.figure(figsize=(4*plot_scale,3*plot_scale))
+    pyplot.figure(figsize=(4 * plot_scale,3 * plot_scale))
     pyplot.tight_layout()
     pyplot.title(label)
 
@@ -198,8 +209,9 @@ def plot_lines(infile: str, outfile: str, x_axis: str, y_axis, label: str, legen
         data[sort_by] = data[sort_by].replace(sort_labels)
 
     for (pos, suby) in enumerate(y_axis):
-        axis = pyplot.subplot(len(y_axis), 1, pos+1)
-        lineplot(x=x_axis, y=f'_y_val{pos}', errorbar='sd', ax=axis, hue=sort_by, style=sort_by, data=data,
+        axis = pyplot.subplot(len(y_axis), 1, pos + 1)
+        lineplot(x=x_axis, y=f'_y_val{pos}', errorbar='sd',
+                 ax=axis, hue=sort_by, style=sort_by, data=data,
                  sort=True, markers=True)
         axis.set_xscale(x_scale)
         axis.set_yscale(y_scale)
@@ -211,7 +223,7 @@ def plot_lines(infile: str, outfile: str, x_axis: str, y_axis, label: str, legen
 
         axis.legend(fontsize=font_size, loc=legend_location)
 
-        at_end = pos+1 == len(y_axis)
+        at_end = pos + 1 == len(y_axis)
 
         if at_end:
             if x_label is None:

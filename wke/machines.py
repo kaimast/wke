@@ -1,5 +1,6 @@
 ''' Information about machines in the cluster '''
 
+
 class MachineInfo:
     ''' Describes on specific machine'''
 

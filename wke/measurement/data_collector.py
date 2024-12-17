@@ -1,7 +1,5 @@
 """ Data collection functionality for measurements """
 
-#pylint: disable=too-many-instance-attributes,consider-using-with
-
 from time import time
 from threading import Thread, Condition, Lock
 import select
@@ -15,9 +13,10 @@ from .sockets import SocketListener, MessageType
 
 EPOLL_FLAGS = select.EPOLLERR | select.EPOLLHUP | select.EPOLLIN
 
-LOG_INTERVAL = 0.1 #seconds
+LOG_INTERVAL = 0.1  # seconds
 
 STATS = ['cpu', 'mem', 'disk-read', 'disk-write', 'netout', 'netin']
+
 
 class DataCollector(Thread):
     ''' Collects data, e.g, CPU usage, from the machines '''
@@ -83,7 +82,7 @@ class DataCollector(Thread):
             args = [self._hostname, monitor_port, minfo.identifier]
 
             task = Task(0, minfo, "collect-data", command,
-                                 self._cluster, args=args, verbose=True)
+                        self._cluster, args=args, verbose=True)
             task.start()
             tasks.append(task)
 
@@ -98,7 +97,6 @@ class DataCollector(Thread):
                 print("Still waiting for monitor client connections...")
 
         return poll_set, sockets, tasks
-
 
     def run(self):
         poll_set, sockets, tasks = self._setup_connections()
@@ -120,7 +118,7 @@ class DataCollector(Thread):
                 for conn in self._conns.values():
                     for stat in STATS:
                         load_file.write(',')
-                        load_file.write(str(conn["last_" +stat]))
+                        load_file.write(str(conn["last_" + stat]))
 
                 load_file.write('\n')
 

@@ -8,6 +8,7 @@ from os import path
 from .params import ExponentialSteps, LinearSteps
 from .params import ListSteps, Parameter, ParameterSet, SubparamSteps
 
+
 def parse_toml(filename: str, default_config: dict[str, Parameter]):
     ''' Read the experiment definition from a TOML file '''
 
@@ -19,7 +20,8 @@ def parse_toml(filename: str, default_config: dict[str, Parameter]):
     except OSError as err:
         raise RuntimeError(f"Cannot open TOML file at {filename}: {err}") from err
     except tomllib.TOMLDecodeError as err:
-        raise RuntimeError(f'Experiment file "{filename}" is not a valid TOML file: {err}') from err
+        raise RuntimeError(f'Experiment file "{filename}" is not '
+                           f'a valid TOML file: {err}') from err
 
     print("## Arguments:")
     num_iterations = toml_file["experiment"].get("num_iterations", 1)
@@ -38,6 +40,7 @@ def parse_toml(filename: str, default_config: dict[str, Parameter]):
     plots = toml_file.get('plots', None)
 
     return (steps, variables, hill_climb, name, num_iterations, plots)
+
 
 def _parse_subparameters(toml_file, default_config: dict[str, Parameter],
         variables: set[str], hill_climb, value):
@@ -68,7 +71,9 @@ def _parse_subparameters(toml_file, default_config: dict[str, Parameter],
 
     return SubparamSteps(subparams)
 
-def _parse_parameters(toml_file, default_config: dict[str, Parameter], params, hill_climb):
+
+def _parse_parameters(toml_file, default_config: dict[str, Parameter],
+                      params, hill_climb):
     '''
     Reads a parameter set from a TOML table.
     This can either be the "main" set or a subparameter set.

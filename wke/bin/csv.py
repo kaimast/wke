@@ -5,6 +5,7 @@
 
 from .helper import fatal_error
 
+
 def set_up_merge_csv(subparsers):
     ''' Set up arguments for the `merge-csv` command '''
 
@@ -16,6 +17,7 @@ def set_up_merge_csv(subparsers):
     parser.add_argument('outfile', type=str)
 
     parser.set_defaults(func=_merge_csv_cmd)
+
 
 def _merge_csv_cmd(args):
     from pandas import read_csv, concat

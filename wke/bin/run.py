@@ -6,6 +6,7 @@ import sys
 from .helper import parse_selector, fatal_error, try_get_cluster, try_get_config
 from .. import run, RemoteExecutionError
 
+
 def set_up_run(subparsers):
     ''' Set up arguments for the `run` command '''
 
@@ -24,7 +25,8 @@ def set_up_run(subparsers):
     parser.add_argument('--debug', action='store_true',
         help="Print additional debug information")
     parser.add_argument('--dry-run', action='store_true',
-        help="Do not actually run the command but just check whether the input looks valid")
+        help=("Do not actually run the command but just check whether "
+              " the input looks valid"))
     parser.add_argument('--workdir', type=str,
         help="Use a different working directory than the default one to run the command")
     parser.add_argument('--multiply', type=int, default=1,
@@ -38,6 +40,7 @@ def set_up_run(subparsers):
 
     parser.set_defaults(func=_run_command)
 
+
 def _parse_targets(targets, config):
     ''' Parse targets from user input '''
     if ',' in targets:
@@ -49,6 +52,7 @@ def _parse_targets(targets, config):
         return config.target_names
 
     return [targets]
+
 
 def _run_command(args):
     ''' Run a commnad specified by the user '''
@@ -68,7 +72,8 @@ def _run_command(args):
 
     if args.options:
         if len(targets) > 1:
-            raise RuntimeError("Cannot ovewrite arguments with more than one target (yet)")
+            raise RuntimeError(("Cannot ovewrite arguments with more "
+                                "than one target (yet)"))
 
         for oarg in args.options:
             try:

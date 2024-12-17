@@ -1,13 +1,12 @@
 ''' This is part of the benchmark scripts. See __init__.py for more details. '''
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-statements,too-many-locals,too-many-positional-arguments
-
 import sys
 
 from time import localtime, strftime
 from os.path import isfile, getmtime
 
 from .plot import plot_lines, plot_bars, plot_script
+
 
 class ResultPrinter:
     ''' This lazily creates results file only when there are results to print '''
@@ -49,7 +48,8 @@ class ResultPrinter:
                 # write constants as another command
                 results_file.write(f'# constants: {constants_str}\n')
                 results_file.write("# ----------------------------- \n")
-                results_file.write(f"uid, {', '.join(param_keys + list(extra_params.keys()))}\n")
+                plabels = ', '.join(['uid'] + param_keys + list(extra_params.keys()))
+                results_file.write(f"{plabels}\n")
             print(f"New file created: {self._results_fname}")
         except OSError as err:
             raise RuntimeError('Failed to create results file at '
@@ -91,7 +91,7 @@ class ResultPrinter:
         ''' Refresh all plots for this experiment '''
 
         # load pandas lazily
-        from pandas import read_csv # pylint: disable=import-outside-toplevel
+        from pandas import read_csv
 
         plots = self._plots
         had_main_plot = False
@@ -104,7 +104,7 @@ class ResultPrinter:
                     raise RuntimeError(f'Plot label "{label}" used more than once!')
                 labels.update(label)
 
-                outname =  f"plots/{self._name}_{label}.pdf"
+                outname = f"plots/{self._name}_{label}.pdf"
             else:
                 if had_main_plot:
                     raise RuntimeError("Only one plot can have no label!")
@@ -112,7 +112,8 @@ class ResultPrinter:
                 label = None
                 outname = f"plots/{self._name}.pdf"
 
-            if not force and isfile(outname) and getmtime(self._results_fname) <= getmtime(outname):
+            if not force and isfile(outname) and \
+               getmtime(self._results_fname) <= getmtime(outname):
                 print(f'☑️  Plot "{label}" up to date')
                 return
 

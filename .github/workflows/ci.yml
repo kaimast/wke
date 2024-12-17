@@ -16,7 +16,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         make install
-        pip install mypy pylint pytest
+        pip install mypy flake8 pytest
     - name: Setup mypy
       run: |
         pip install mypy
