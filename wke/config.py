@@ -1,5 +1,3 @@
-# pylint: disable=too-many-public-methods,fixme,too-many-instance-attributes
-
 ''' API encapsulating all the information from the config.toml file '''
 
 from typing import Any
@@ -12,6 +10,7 @@ from .errors import ConfigurationError
 TARGET_FOLDER = "targets"
 PRELUDE_FOLDER = "preludes"
 PROTECTED_NAMES = ["all", "help", "copy-data"]
+
 
 class Argument:
     ''' Representation of an argument for a specific target '''
@@ -34,6 +33,7 @@ class Argument:
     def default_value(self) -> Any:
         ''' The default value, if any is given '''
         return self._default
+
 
 class Prelude:
     ''' Prelude prepare execution of a targets, e.g., by setting environmetn variables '''
@@ -58,7 +58,8 @@ class Prelude:
         ''' Description of this prelude '''
         return self._about
 
-    def get_command(self) -> str:
+    @property
+    def command(self) -> str:
         ''' Get the code for this prelude '''
         cmd = ""
 
@@ -67,11 +68,11 @@ class Prelude:
                 line = line.replace('\n', '')
 
                 if pos == 0:
-                    if not '#!' in line:
+                    if '#!' not in line:
                         raise ConfigurationError(
                             f'First line of prelude in {self.path} not a shebang: {line}')
 
-                    if not 'bash' in line:
+                    if 'bash' not in line:
                         raise ConfigurationError(
                             f'Only bash preludes are supported, but {self.path} is not')
                 else:
@@ -79,6 +80,7 @@ class Prelude:
                         cmd += f'{line} && '
 
         return cmd
+
 
 class Target:
     ''' A command that we can run on one or multiple mmachines '''
@@ -122,7 +124,8 @@ class Target:
                 name, default = toml_entry
             else:
                 raise ConfigurationError(f'Invalid target argument at {self._path}: '
-                                         f'Must contain one or two entries if specified as a list')
+                                         f'Must contain one or two entries if '
+                                         f'specified as a list')
         elif isinstance(toml_entry, str):
             name = toml_entry
             default = None
@@ -131,8 +134,8 @@ class Target:
                 name = toml_entry["name"]
             except KeyError as err:
                 raise ConfigurationError(f'Invalid target argument at {self._path}: '
-                                         f'Must contain "name" if specified as a dict') from err
-
+                                         f'Must contain "name" if specified as '
+                                         f'a dict') from err
 
             default = toml_entry.get("default", None)
         else:
@@ -183,6 +186,7 @@ class Target:
         with open(self.path, encoding='utf-8') as cmdfile:
             return cmdfile.read()
 
+
 class Configuration:
     ''' Holds the contents of the config.toml file '''
 
@@ -197,7 +201,8 @@ class Configuration:
         except OSError as err:
             raise ConfigurationError(f"Cannot open config file at {path}: {err}") from err
         except tomllib.TOMLDecodeError as err:
-            raise ConfigurationError(f"Failed to parse config file at {path}: {err}") from err
+            raise ConfigurationError(f"Failed to parse config file at {path}: "
+                                     f"{err}") from err
 
         self._preludes: dict[str, Prelude] = {}
         self._targets: dict[str, Target] = {}
@@ -302,7 +307,6 @@ class Configuration:
     def _override_config(self, _path, parent, child: dict):
         for key, value in child.items():
             if isinstance(value, dict) and key in parent:
-                #print(f"Merging {path}.{key}")
                 assert isinstance(parent[key], dict)
                 path = f"{_path}.{key}"
                 self._override_config(path, parent[key], value)
@@ -314,14 +318,14 @@ class Configuration:
 
         if verbose:
             targets = {
-               'install-packages': {
+                'install-packages': {
                     'about': 'Install the required debian packages',
                     'arguments': []
                 }
             }
         else:
             targets = {
-               'install-packages': 'Install the required debian packages',
+                'install-packages': 'Install the required debian packages',
             }
 
         for info in self.targets:
@@ -332,11 +336,11 @@ class Configuration:
                         args.append({"name": arg.name, "required": True})
                     else:
                         args.append({"name": arg.name, "required": False,
-                                "default-value": arg.default_value })
+                                "default-value": arg.default_value})
 
                 targets[info.name] = {
                     'about': info.about,
-                    'arguments': args, 
+                    'arguments': args,
                 }
             else:
                 targets[info.name] = info.about
@@ -373,22 +377,26 @@ class Configuration:
         ''' Returns the parent folder of where the config is located '''
         return self._base_path
 
-    def _get_prelude_path(self, script):
+    def _get_prelude_path(self, script) -> str:
         return f"{self.base_path}/{self.name}/{PRELUDE_FOLDER}/{script}"
 
-    def _get_target_bash_path(self, script):
+    def _get_target_bash_path(self, script) -> str:
         return f"{self.base_path}/{self.name}/{TARGET_FOLDER}/{script}"
 
-    def _get_target_python_path(self, script):
-        return f"{self.base_path}/{self.name}/{TARGET_FOLDER}/{script.lower().replace('-', '_')}.py"
+    def _get_target_python_path(self, script) -> str:
+        return (f"{self.base_path}/{self.name}/{TARGET_FOLDER}/"
+               f"{script.lower().replace('-', '_')}.py")
 
     @property
     def default_prelude(self):
-        ''' Get the default prelude for this config. Returns none if none was specified. '''
+        '''
+            Get the default prelude for this config.
+            Returns none if none was specified.
+        '''
         return self._default_prelude
 
     @property
-    def prelude_names(self):
+    def prelude_names(self) -> list[str]:
         ''' Get the names of all preludes this config '''
         return list(self._preludes.keys())
 
@@ -397,23 +405,23 @@ class Configuration:
         ''' Get all preludes '''
         return list(self._preludes.values())
 
-    def get_prelude_cmd(self, name):
+    def get_prelude_cmd(self, name) -> str:
         ''' Convert an prelude file into a command line command '''
 
         prelude = self._preludes[name]
         if prelude is None:
             raise ConfigurationError(f"No such prelude: {name}")
 
-        return prelude.get_command()
+        return prelude.command
 
     def get_target(self, target_name):
         '''
-            Get a target by its name. 
+            Get a target by its name.
             Returns None if no such target exists
         '''
         return self._targets.get(target_name, None)
 
-    def get_target_cmd(self, target_name):
+    def get_target_cmd(self, target_name) -> str:
         ''' Get the contents of a make command script '''
         target = self._targets.get(target_name)
         if target is None:
@@ -430,7 +438,7 @@ class Configuration:
                 f' at any of these locations: {search_paths}'
             )
 
-        return target.get_command()
+        return target.command
 
     def get_target_args(self, target_name):
         ''' Get arguments for a target '''

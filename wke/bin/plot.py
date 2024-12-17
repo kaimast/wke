@@ -5,12 +5,15 @@ from time import sleep
 
 from wke import plot_loads
 
+
 def set_up_plot_loads(subparsers):
     ''' Set up arguments for the `plot-loads` command '''
 
-    parser = subparsers.add_parser('plot-loads', help="Plot statistics aggregated by machine class")
+    parser = subparsers.add_parser('plot-loads',
+        help="Plot statistics aggregated by machine class")
 
-    parser.add_argument("logfolder", help="The folder containing the experiments log files")
+    parser.add_argument("logfolder",
+        help="The folder containing the experiments log files")
     parser.add_argument("--follow", '-f', action="store_true",
             help="If this is set, the script will periodically update \
                 the loads file instead of terminating after creating it")
@@ -20,6 +23,7 @@ def set_up_plot_loads(subparsers):
     parser.add_argument("--machine-index", type=int)
 
     parser.set_defaults(func=_plot_loads_command)
+
 
 def _plot_loads_command(args):
     print(f'Writing plot to "{args.out}"')

@@ -1,7 +1,5 @@
 ''' API encapsulating all the information from the cluster.toml file '''
 
-# pylint: disable=fixme,consider-using-with,too-many-arguments,too-many-branches
-
 from typing import Optional, Any
 from subprocess import call
 
@@ -15,10 +13,11 @@ from .errors import RemoteExecutionError
 from .machines import MachineInfo
 from .errors import ClusterError
 
+
 class Cluster:
     ''' Holds the contents of the cluster.toml file '''
 
-    def __init__(self, path: str='cluster.toml'):
+    def __init__(self, path: str = 'cluster.toml'):
         if not isinstance(path, str) or len(path) == 0:
             raise ClusterError("Path for cluster file must be a non-empty string")
 
@@ -63,7 +62,7 @@ class Cluster:
         for info in self._machines:
             machines[info.name] = info.generate_metadata()
 
-        return { "machines": machines }
+        return {"machines": machines}
 
     def _parse_machine(self, name, machine_def):
         '''

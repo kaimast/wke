@@ -1,15 +1,17 @@
 '''' Logging utilities for wke '''
 
-#pylint: disable=consider-using-with
-
 import re
 
 from sys import stdout, stderr
 
 from time import strftime, localtime
 
+
 class MetaLogger():
-    ''' Handles logging from the experiment itself; not a specific machine or experiment run '''
+    '''
+        Handles logging from the experiment itself; not a
+        specific machine or experiment run
+    '''
 
     def __init__(self, logfolder):
         self._path = f"{logfolder}/META.log"
@@ -32,6 +34,7 @@ class MetaLogger():
     def __str__(self):
         return f'Meta logger for file "{self._path}"'
 
+
 class MachineLogger:
     ''' Logger for a specific machine '''
 
@@ -50,21 +53,21 @@ class MachineLogger:
     def log_meta(self, msg):
         ''' Log some meta information, e.g. the machine has started '''
         if len(msg) == 0:
-            return #ignore
+            return  # ignore
 
         self._log(stdout, 'META', msg, True)
 
     def log_info(self, msg):
         ''' Log a regular message '''
         if len(msg) == 0:
-            return #ignore
+            return  # ignore
 
         self._log(stdout, 'I', msg, self._verbose)
 
     def log_error(self, msg):
         ''' Log an error '''
         if len(msg) == 0:
-            return #ignore
+            return  # ignore
 
         self._has_error = True
         self._log(stderr, 'E', msg, True)

@@ -4,6 +4,7 @@ import subprocess
 
 from .helper import try_get_cluster
 
+
 def set_up_connect(subparsers):
     ''' Set up arguments for the `connect` command '''
     parser = subparsers.add_parser('connect',
@@ -11,6 +12,7 @@ def set_up_connect(subparsers):
     parser.add_argument('machine_name')
     parser.add_argument('--cluster-file', '-f', type=str, default='cluster.toml')
     parser.set_defaults(func=_connect)
+
 
 def _connect(args):
     cluster = try_get_cluster(args.cluster_file)

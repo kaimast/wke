@@ -12,6 +12,7 @@ from .show import set_up_show_config, set_up_show_machine, set_up_show_cluster
 from .connect import set_up_connect
 from .run import set_up_run
 
+
 def _generate_get_machine_attribute_args_parser(subparsers):
     parser = subparsers.add_parser('get-machine-attribute',
         help='Show the value of an attribute of a machine in the cluster')
@@ -22,6 +23,7 @@ def _generate_get_machine_attribute_args_parser(subparsers):
         help=("Change the working directory. "
               "Useful if you invoke the command from outside the cluster folder"))
     parser.set_defaults(func=_get_machine_attribute)
+
 
 def _get_machine_attribute(args):
     if args.cwd:
@@ -35,6 +37,7 @@ def _get_machine_attribute(args):
         print(value)
     else:
         print(f'[ERROR] No such attribute "{args.attribute}"')
+
 
 def main():
     ''' The main logic for the command line utilities '''
@@ -55,6 +58,7 @@ def main():
 
     args = parser.parse_args()
     args.func(args)
+
 
 # Needed for testing
 if __name__ == "__main__":

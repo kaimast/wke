@@ -6,6 +6,7 @@ from typing import NoReturn
 
 from wke import Configuration, Cluster, ClusterError, ConfigurationError
 
+
 def try_get_config(config_name: str) -> Configuration:
     ''' Fetch the specified config and generate an error if
         reading it fails '''
@@ -13,6 +14,7 @@ def try_get_config(config_name: str) -> Configuration:
         return Configuration(config_name)
     except ConfigurationError as err:
         fatal_error(err)
+
 
 def try_get_cluster(cluster_file: str) -> Cluster:
     '''
@@ -24,10 +26,12 @@ def try_get_cluster(cluster_file: str) -> Cluster:
     except ClusterError as err:
         fatal_error(err)
 
+
 def fatal_error(message) -> NoReturn:
     ''' Show an error message and terminate the program '''
     print(f"[ERROR] {message}")
     sys.exit(1)
+
 
 def parse_selector(selector, cluster):
     ''' Figure out what machines the user specified '''

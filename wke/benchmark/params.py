@@ -1,16 +1,18 @@
 ''' This is part of the benchmark scripts. See __init__.py for more details. '''
 
-# pylint: disable=too-few-public-methods,fixme,too-many-arguments
-# pylint: disable=too-many-positional-arguments
-
 from typing import Any
 from copy import deepcopy
+
 
 class ParameterError(Exception):
     ''' Errors generated while dealing with experiment parameters '''
 
+
 class Parameter:
-    ''' Describes a parameter that can be configured / is configured during an experiment run '''
+    '''
+        Describes a parameter that can be configured /
+        is configured during an experiment run
+    '''
 
     def __init__(self, name: str, config):
         if isinstance(config, Parameter):
@@ -30,7 +32,7 @@ class Parameter:
                 self._about = config["about"]
             else:
                 print(f'No description given for parameter "{name}". '
-                       'Add an "about"-field to fix this.')
+                      f'Add an "about"-field to fix this.')
                 self._about = "No description."
         else:
             print(f'Parameter "{name}" is using old format. '
@@ -58,17 +60,29 @@ class Parameter:
     @value.setter
     def value(self, new_val):
         ''' Sets the value of this parameter '''
-        if self.type == bool:
-            value = value.lower() == 'true' or value == '1'
-        elif self.type in [int, float]:
-            # Allow simple integer/float conversion
-            value = self.type(new_val)
-        elif not isinstance(new_val, self.type):
-            raise ParameterError(
-                f'Cannot set parameter "{self.name}" to `{new_val}`: '
-                f'Incompatible type. '
-                f'Default type is {self.type_name} (value=`{self.default_value}`), '
-                f'not {type(new_val).__name__}.')
+
+        if not isinstance(new_val, self.type):
+            # Try type conversion
+            fail = False
+            if self.type == bool:
+                if new_val.lower() in ['true', '1']:
+                    new_val = True
+                elif new_val.lower() in ['false', '0']:
+                    new_val = False
+                else:
+                    fail = True
+            elif self.type in [int, float]:
+                # Allow simple integer/float conversion
+                new_val = self.type(new_val)
+            else:
+                fail = True
+
+            if fail:
+                raise ParameterError(
+                     f'Cannot set parameter "{self.name}" to `{new_val}`: '
+                     f'Incompatible type. '
+                     f'Default type is {self.type_name} (value=`{self.default_value}`), '
+                     f'not {type(new_val).__name__}.')
 
         print(f'🔬 Setting "{self.name}" to value `{new_val}`, '
               f'was {self.value} (type: {self.type_name})')
@@ -86,7 +100,10 @@ class Parameter:
 
     @property
     def type_name(self):
-        ''' Human-readble name of the type of this config value. (Based on the default) '''
+        '''
+            Human-readble name of the type of this config value.
+            (Based on the default)
+        '''
         return self.type.__name__
 
 
@@ -97,12 +114,14 @@ def parse_parameters(parameters: dict[str, Any]) -> dict[str, Parameter]:
         result[name] = Parameter(name, param_config)
     return result
 
+
 def into_parameter_values(parameters: dict[str, Parameter]) -> dict[str, Any]:
     ''' Creates a dict of the current values of the parameters '''
     result = {}
     for (name, param) in parameters.items():
         result[name] = param.value
     return result
+
 
 class LinearSteps:
     ''' Steps through a range '''
@@ -137,12 +156,12 @@ class LinearSteps:
             if self._pos >= self._end:
                 value = self._pos
                 self._pos -= self._step_size
-                return { self._key: value }
+                return {self._key: value}
         else:
             if self._pos <= self._end:
                 value = self._pos
                 self._pos += self._step_size
-                return { self._key: value }
+                return {self._key: value}
 
         return None
 
@@ -190,12 +209,12 @@ class ExponentialSteps:
             if self._pos >= self._end:
                 value = self._base**self._pos
                 self._pos -= self._step_size
-                return { self._key: value }
+                return {self._key: value}
         else:
             if self._pos <= self._end:
                 value = self._base**self._pos
                 self._pos += self._step_size
-                return { self._key: value }
+                return {self._key: value}
 
         return None
 
@@ -207,6 +226,7 @@ class ExponentialSteps:
         ''' Reset steps for next iteration '''
 
         self._pos = self._start
+
 
 class ListSteps:
     ''' Steps through a list '''
@@ -240,6 +260,7 @@ class ListSteps:
         ''' Reset steps for next iteration '''
 
         self._pos = 0
+
 
 class ParameterSet:
     '''
@@ -291,7 +312,7 @@ class ParameterSet:
             self._at_start = False
             return self._generate_config()
 
-        pos = len(self._steps)-1
+        pos = len(self._steps) - 1
         changed = False
 
         while not changed:
@@ -331,7 +352,7 @@ class ParameterSet:
                 config[key] = param
 
         for key in config:
-            #FIXME this should always be a parameter
+            # FIXME this should always be a parameter
             if isinstance(config[key], Parameter):
                 config[key] = config[key].value
 
@@ -348,6 +369,7 @@ class ParameterSet:
             self._sub_configs[pos] = step.next()
         self._at_start = True
         self._at_end = False
+
 
 class SubparamSteps:
     ''' Steps through sets of parameters '''

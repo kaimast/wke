@@ -12,7 +12,7 @@ cloc:
 
 lint:
 	mypy ${SRC_DIR}
-	pylint ${SRC_DIR}
+	flake8 ${SRC_DIR}
 
 test:
 	pytest tests

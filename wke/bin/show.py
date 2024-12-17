@@ -5,6 +5,7 @@ import json
 
 from .helper import try_get_cluster, try_get_config
 
+
 def set_up_show_machine(subparsers):
     ''' Set up arguments for the `show-machine` commmand '''
 
@@ -19,6 +20,7 @@ def set_up_show_machine(subparsers):
         help="Instead of a human-readable output, generate a JSON file")
     parser.set_defaults(func=_show_machine)
 
+
 def set_up_show_cluster(subparsers):
     ''' Set up arguments for the `show-cluster` command '''
 
@@ -31,6 +33,7 @@ def set_up_show_cluster(subparsers):
     parser.add_argument("--json", action='store_true',
         help="Instead of a human-readable output, generate a JSON file")
     parser.set_defaults(func=_show_cluster)
+
 
 def set_up_show_config(subparsers):
     ''' Set up arguments for the `show_config` command '''
@@ -47,14 +50,18 @@ def set_up_show_config(subparsers):
               "Useful if you invoke the command from outside the cluster folder"))
     parser.set_defaults(func=_show_config)
 
+
 def _list_level1(content: str):
     print(f' ⦿ {content}')
+
 
 def _list_level2(content: str):
     print(f'   - {content}')
 
+
 def _list_level3(content: str):
     print(f'      • {content}')
+
 
 def _print_targets_verbose(targets: dict):
     for name, target in targets.items():
@@ -73,9 +80,11 @@ def _print_targets_verbose(targets: dict):
             else:
                 _list_level3(f"{arg['name']} [default: '{arg['default-value']}']")
 
+
 def _print_targets(targets: dict):
     for name, about in targets.items():
         print(f" ⦿ {name}: {about}")
+
 
 def _show_config(args):
     ''' Show information about the configuration '''
@@ -102,18 +111,20 @@ def _show_config(args):
         else:
             _print_targets(meta["targets"])
 
+
 def _show_machine(args):
     if args.cwd:
         os.chdir(args.cwd)
 
     cluster = try_get_cluster(args.cluster_file)
-    machine= cluster.get_machine(args.machine_name).generate_metadata()
+    machine = cluster.get_machine(args.machine_name).generate_metadata()
 
     if args.json:
         print(json.dumps(machine))
     else:
         print(f"external-addr={machine['external_addr']}")
         print(f"internal-addr={machine['internal_addr']}")
+
 
 def _show_cluster(args):
     ''' Print informmation about a givne cluster '''

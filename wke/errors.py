@@ -1,4 +1,5 @@
-''' Error types used by wsk '''
+''' Error types used by wke '''
+
 
 class RemoteExecutionError(Exception):
     ''' Errors generated when running a command on another machine '''
@@ -25,6 +26,7 @@ class RemoteExecutionError(Exception):
     def __str__(self):
         return f"Error on {self.machine} for command {self.command}: {self.message}"
 
+
 class RunTargetError(Exception):
     ''' Error created when calling check_run. Captures errors on multiple machines '''
     def __init__(self, target: str, errors: list[str]):
@@ -48,14 +50,18 @@ class RunTargetError(Exception):
         ''' Get the individual per-machine errors '''
         return self._errors
 
+
 class MeasurementFailedError(Exception):
     ''' Indicates the measurement was not successful '''
+
 
 class ConfigurationError(Exception):
     ''' Errors generated when parsing a config or target file '''
 
+
 class BenchmarkError(Exception):
     ''' Errors generated when running benchmarks '''
+
 
 class ClusterError(Exception):
     ''' Errors generated when parsing a cluster.toml file '''
