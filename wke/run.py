@@ -128,6 +128,11 @@ def _parse_options(target, options: Optional[dict]) -> tuple[list[str], str]:
         if value is None:
             raise ValueError(f'No value set for required option "{option.name}"')
 
+        if option.choices and value not in option.choices:
+            raise ValueError(f'Invalid value set for option "{option.name}". '
+                             f'Was `{value}` but allowed choices are '
+                             f'{','.join(option.choices)}.')
+
         argv.append(value)
 
         if isinstance(value, str):

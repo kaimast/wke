@@ -13,7 +13,8 @@ def test_basic():
 
     target = config.get_target("setup-rust")
     assert target.option_names == ["channel", "profile"]
-    assert target.get_default_value("channel") == "stable"
+    assert target.get_option('channel').choices == ['stable', 'nightly']
+    assert target.get_option("channel").default_value == "stable"
 
     target = config.get_target("install-tokio")
     assert target.command == '#! /bin/bash\necho "Just a test script"\n'
@@ -36,7 +37,7 @@ def test_inherit():
     # ensure options are overwritten
     target = config.get_target("setup-rust")
     assert target.option_names == ["channel"]
-    assert target.get_default_value("channel") == "nightly"
+    assert target.get_option("channel").default_value == "nightly"
 
     # ensure we can still access the parents code properly
     target = config.get_target("install-tokio")

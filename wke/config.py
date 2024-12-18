@@ -31,8 +31,11 @@ class Option:
         return self._default is None
 
     @property
-    def choice(self) -> Optional[list[Any]]:
-        ''' The allowed choices, if specified '''
+    def choices(self) -> Optional[list[Any]]:
+        '''
+            Get the allowed values for this option.
+            Return None if all values are allowed
+        '''
         return self._choices
 
     @property
@@ -175,16 +178,15 @@ class Target:
 
     @property
     def option_names(self) -> list[str]:
-        ''' Get the names of all options '''
-        return [arg.name for arg in self._options]
+        ''' Get the names/keys of all options '''
+        return [opt.name for opt in self._options]
 
-    def get_default_value(self, name) -> Any:
-        ''' Get the default value for the specified option '''
-
-        for arg in self._options:
-            if arg.name == name:
-                return arg.default_value
-        raise ConfigurationError(f"No such option {name}")
+    def get_option(self, option_name: str) -> Optional[list[Any]]:
+        ''' Get an option by its name '''
+        for opt in self._options:
+            if opt.name == option_name:
+                return opt
+        raise ConfigurationError(f"No such option {option_name}")
 
     @property
     def command(self) -> str:
@@ -340,12 +342,12 @@ class Configuration:
         for info in self.targets:
             if verbose:
                 args = []
-                for arg in info.options:
-                    if arg.required:
-                        args.append({"name": arg.name, "required": True})
+                for opt in info.options:
+                    if opt.required:
+                        args.append({"name": opt.name, "required": True})
                     else:
-                        args.append({"name": arg.name, "required": False,
-                                "default-value": arg.default_value})
+                        args.append({"name": opt.name, "required": False,
+                                "default-value": opt.default_value})
 
                 targets[info.name] = {
                     'about': info.about,
