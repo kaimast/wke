@@ -8,7 +8,7 @@ import multiprocessing
 from time import localtime, strftime, time
 from typing import Optional, Any
 
-from ..run import run, run_background
+from ..run import run, background_run, DEFAULT_PRELUDE
 from ..errors import MeasurementFailedError
 from ..config import Configuration
 
@@ -128,7 +128,8 @@ class MeasurementSession:
             proc.join()
 
     def run(self, selector, target, config: Optional[Configuration] = None,
-            options: Optional[dict[str, Any]] = None, prelude: Optional[str] = None,
+            options: Optional[dict[str, Any]] = None,
+            prelude: Optional[str] = DEFAULT_PRELUDE,
             timeout=None, quiet_fail=False) -> bool:
         '''
             Run a target as part of this session, but do not measure.
@@ -144,14 +145,15 @@ class MeasurementSession:
                    verbose=self._verbose, quiet_fail=quiet_fail,
                    log_dir=self.log_dir, timeout=timeout)
 
-    def run_background(self, selector, target, options=None,
+    def background_run(self, selector, target,
+                       options: Optional[dict[str, Any]] = None,
                        config: Optional[Configuration] = None,
-                       prelude: Optional[str] = None,
-                       timeout=None) -> multiprocessing.Process:
+                       prelude: Optional[str] = DEFAULT_PRELUDE,
+                       timeout: Optional[float] = None) -> multiprocessing.Process:
         '''
             Run a target in the background as part of this session.
-            This is useful, for example, to start a server process that you will measure
-            again.
+            This is useful, for example, to start a server process that you will
+            measure again.
 
             To stop the background task either kill the returned Process object,
             or call stop_background_tasks().
@@ -159,15 +161,18 @@ class MeasurementSession:
         if config is None:
             config = self.config
 
-        proc = run_background(selector, config, target, prelude=prelude,
+        proc = background_run(selector, config, target, prelude=prelude,
                               options=options, verbose=self._verbose,
                               log_dir=self.log_dir, timeout=timeout)
 
         self._background_tasks.append(proc)
         return proc
 
-    def measure(self, selector, target, num_operations, options=None,
-                prelude=None, timeout=None) -> MeasurementResult:
+    def measure(self, selector, target, num_operations,
+                options: Optional[dict[str, Any]] = None,
+                config: Optional[Configuration] = None,
+                prelude: Optional[str] = DEFAULT_PRELUDE,
+                timeout: Optional[float] = None) -> MeasurementResult:
         '''
             Run the target and measure its performance/output.
 
@@ -176,7 +181,7 @@ class MeasurementSession:
         '''
 
         if options is None:
-            options = []
+            options = {}
 
         if self._collect_statistics is None:
             print("Won't collect statistics")

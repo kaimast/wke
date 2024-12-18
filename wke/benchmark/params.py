@@ -80,9 +80,8 @@ class Parameter:
             if fail:
                 raise ParameterError(
                      f'Cannot set parameter "{self.name}" to `{new_val}`: '
-                     f'Incompatible type. '
-                     f'Default type is {self.type_name} (value=`{self.default_value}`), '
-                     f'not {type(new_val).__name__}.')
+                     f'Incompatible type. Default type is {self.type_name} '
+                     f'(value=`{self.default_value}`), not {type(new_val).__name__}.')
 
         print(f'🔬 Setting "{self.name}" to value `{new_val}`, '
               f'was {self.value} (type: {self.type_name})')

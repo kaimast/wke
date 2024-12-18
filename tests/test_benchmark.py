@@ -6,12 +6,14 @@ Unit tests for the benchmark scripts
 
 from wke.benchmark.params import ParameterSet, LinearSteps, ListSteps, SubparamSteps
 
+
 def test_linear_steps():
     steps = LinearSteps("foo", 2, 6, 3)
 
     assert steps.next()["foo"] == 2
     assert steps.next()["foo"] == 5
     assert steps.next() is None
+
 
 def test_reverse_linear_steps():
     steps = LinearSteps("foo", 6, 2, 3)
@@ -22,12 +24,14 @@ def test_reverse_linear_steps():
     assert steps.next()["foo"] == 3
     assert steps.next() is None
 
+
 def test_list_steps():
     steps = ListSteps("foo", ["bar", "baz"], str)
 
     assert steps.next()["foo"] == 'bar'
     assert steps.next()["foo"] == 'baz'
     assert steps.next() is None
+
 
 def test_params():
     variables = ["foo", "bar"]
@@ -59,6 +63,7 @@ def test_params():
     config = params.next()
     assert config is None
     assert params.at_end()
+
 
 def test_subparams():
     variables = ["foo", "bar"]

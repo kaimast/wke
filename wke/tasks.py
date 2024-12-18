@@ -1,8 +1,5 @@
 ''' Utilities to handle connections to a remote machine '''
 
-# pylint: disable=too-many-instance-attributes,too-many-arguments,fixme
-# pylint: disable=too-many-positional-arguments
-
 from threading import Thread, Event
 from time import time, sleep
 
@@ -25,19 +22,18 @@ class Task(Thread):
     '''
 
     def __init__(self, grp_index: int, machine_info, task_name: str, command: str,
-                cluster, prelude=None, args=None, workdir="", verbose=False,
-                grp_size=1, username="", log_dir=None, debug=False):
+                cluster, prelude=None, options: list[str] = [], workdir="",
+                verbose=False, grp_size=1, username="", log_dir=None, debug=False):
 
         # assert isinstance(cluster, Cluster) Creates cyclic dependency
-        assert args is None or isinstance(args, list)
 
         self._machine_info = machine_info
         self._task_name = task_name
         self._command = command
         self.exception = None
-        self.cluster = cluster
-        self.workdir = workdir
-        self.args = [] if args is None else args
+        self._cluster = cluster
+        self._workdir = workdir
+        self._options = options
         self._verbose = verbose
         self._group_index = grp_index
         self._group_size = grp_size
@@ -90,7 +86,10 @@ class Task(Thread):
 
     @property
     def task_name(self):
-        ''' Returns a name/description of the associated task, e.g., the target name '''
+        '''
+            Returns a name/description of the associated task, e.g.,
+            the target name.
+        '''
         return self._task_name
 
     @property
@@ -107,38 +106,38 @@ class Task(Thread):
         ''' Stop whatever command is running right now '''
         self.stop.set()
 
-    def _generate_args(self):
-        args = ""
+    def _generate_options(self):
+        options = ""
 
-        for arg in self.args:
-            args += " "
+        for option in self._options:
+            options += " "
 
             # TODO use an enum here
-            if isinstance(arg, str) and len(arg) > 0 and arg[0] == "@":
-                if arg == "@GROUP_INDEX":
-                    args += str(self.group_index)
-                elif arg == "@NAME":
-                    args += self._machine_info.name
-                elif arg == "@EXTERNAL":
-                    args += self._machine_info.external_addr
-                elif arg == "@GROUP_SIZE":
-                    args += str(self.group_size)
-                elif arg == "@INTERNAL":
-                    args += self._machine_info.internal_addr
-                elif arg == "@USERNAME":
-                    args += self.username
+            if isinstance(option, str) and len(option) > 0 and option[0] == "@":
+                if option == "@GROUP_INDEX":
+                    options += str(self.group_index)
+                elif option == "@NAME":
+                    options += self._machine_info.name
+                elif option == "@EXTERNAL":
+                    options += self._machine_info.external_addr
+                elif option == "@GROUP_SIZE":
+                    options += str(self.group_size)
+                elif option == "@INTERNAL":
+                    options += self._machine_info.internal_addr
+                elif option == "@USERNAME":
+                    options += self.username
                 else:
-                    raise RuntimeError(f'Unknown macro: "{arg}"')
+                    raise RuntimeError(f'Unknown macro: "{option}"')
             else:
-                args += str(arg).replace('(', '\\(').replace(')', '\\)')
+                options += str(option).replace('(', '\\(').replace(')', '\\)')
 
-        return args
+        return options
 
     def _generate_command(self):
         ''' Converts the command into a form that can be passed through ssh '''
 
-        if self.workdir != "":
-            cmd = f'cd {self.workdir} && '
+        if self._workdir != "":
+            cmd = f'cd {self._workdir} && '
         else:
             cmd = ""
 
@@ -150,7 +149,7 @@ class Task(Thread):
         if '#!' not in first_line:
             raise RuntimeError(f"First line of script is not a shebang: {first_line}")
 
-        args = self._generate_args()
+        options = self._generate_options()
 
         if 'python' in first_line:
             for seq in ["'''", "\"'", "'\""]:
@@ -159,11 +158,11 @@ class Task(Thread):
                                        'not supported yet, use <"""> instead')
 
             code = self.command.replace('"', "'''")
-            cmd += f'python3 -c "{code}" {args}'
+            cmd += f'python3 -c "{code}" {options}'
         elif 'bash' in first_line:
             code = self.command.replace('"', '\\"').replace("'", "\'").replace('$', '\\$')
             # for bash we need to explicitly set argument 0
-            cmd += f' printf "{code}" | bash -s {args}'
+            cmd += f' printf "{code}" | bash -s {options}'
         else:
             raise RuntimeError(f"Unsupported shebang: {first_line}")
 
@@ -187,7 +186,7 @@ class Task(Thread):
             logger.log_meta(f'Executing command on "{self.machine_name}": {cmd}')
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.connect((self._machine_info.external_addr, self.cluster.ssh_port))
+            sock.connect((self._machine_info.external_addr, self._cluster.ssh_port))
 
             # Prevents initial delay when setting up the connection
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)

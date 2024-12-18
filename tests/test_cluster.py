@@ -2,9 +2,8 @@
 Unit tests for loading cluster configurations
 '''
 
-# pylint: disable=missing-function-docstring
-
 from wke.cluster import Cluster
+
 
 def test_basic():
     cluster = Cluster(path='test-files/configs/cluster.toml')

@@ -1,2 +1,8 @@
+UNRELEASED:
+    * Transitioned from pylint to flake8 and updated code quality
+    * Added `check_run` to handle failing commands similar to `check_call` in subprocess
+    * Renamed `run_background` to `background_run`
+    * Renamed `Argument` to `Option`
+
 v0.1:
     * Initial release 
