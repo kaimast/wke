@@ -7,7 +7,7 @@ from .helper import try_get_cluster, try_get_config
 
 
 def set_up_show_machine(subparsers):
-    ''' Set up arguments for the `show-machine` commmand '''
+    ''' Set up options for the `show-machine` commmand '''
 
     parser = subparsers.add_parser('show-machine',
         help='Print information about a specific machine in the cluster')
@@ -22,7 +22,7 @@ def set_up_show_machine(subparsers):
 
 
 def set_up_show_cluster(subparsers):
-    ''' Set up arguments for the `show-cluster` command '''
+    ''' Set up options for the `show-cluster` command '''
 
     parser = subparsers.add_parser('show-cluster',
         help='Print information about the cluster')
@@ -36,13 +36,13 @@ def set_up_show_cluster(subparsers):
 
 
 def set_up_show_config(subparsers):
-    ''' Set up arguments for the `show_config` command '''
+    ''' Set up options for the `show_config` command '''
 
     parser = subparsers.add_parser('show-config',
         help='Print information about a configuration')
     parser.add_argument("config_name")
     parser.add_argument("--verbose", action='store_true',
-        help="Add even morei informatio")
+        help="Add even more information")
     parser.add_argument("--json", action='store_true',
         help="Instead of a human-readable output, generate a JSON file")
     parser.add_argument('--cwd', type=str,
@@ -69,12 +69,12 @@ def _print_targets_verbose(targets: dict):
         if "about" in target:
             _list_level2(f"About: {target['about']}")
 
-        if len(target["arguments"]) == 0:
-            _list_level2("No arguments")
+        if len(target["options"]) == 0:
+            _list_level2("No options")
             continue
 
         _list_level2("Arguments:")
-        for arg in target["arguments"]:
+        for arg in target["options"]:
             if arg['required']:
                 _list_level3(f"{arg['name']} [required]")
             else:
