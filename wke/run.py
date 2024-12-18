@@ -2,8 +2,8 @@
 
 ''' Interfaces to run a target or built-in command on a set of selector '''
 
-# pylint: disable=too-many-branches,too-many-locals,too-many-arguments
-# pylint: disable=fixme,too-many-positional-arguments
+# pylint: disable=too-many-branches,too-many-locals,too-many-options
+# pylint: disable=fixme,too-many-positional-options
 
 import multiprocessing
 
@@ -107,45 +107,49 @@ def _builtin_install_packages(selector, config: Configuration, verbose: bool,
         raise RunTargetError("install-package", errors)
 
 
-def _parse_options(target, options) -> tuple[list[str], str]:
+def _parse_options(target, options: Optional[dict]) -> tuple[list[str], str]:
     '''
-        Pick default values for arguments or the one specified in options
+        Pick default values for options or the one specified in options
     '''
 
     argv = []
     argstr = []
 
     if options and not isinstance(options, dict):
-        raise ValueError("options must be a dictionary")
+        raise ValueError("options must be None or a dictionary")
 
-    for argument in target.arguments:
-        value = argument.default_value
+    for option in target.options:
+        value = option.default_value
 
-        if options and argument.name in options:
-            value = options[argument.name]
-            del options[argument.name]
+        if options and option.name in options:
+            value = options[option.name]
+            del options[option.name]
 
         if value is None:
-            raise ValueError(f'No value set for required argument "{argument.name}"')
+            raise ValueError(f'No value set for required option "{option.name}"')
 
         argv.append(value)
 
-        argstr.append(f'{argument.name}=`{value}`')
+        if isinstance(value, str):
+            valstr = f'"{value}"'
+        else:
+            valstr = f'{value}'
+        argstr.append(f'\"{option.name}\": {valstr}')
 
     # Check if there were any invalid options specified
     if options:
         for name in options.keys():
             raise ValueError(f'Got unexpected option "{name}" for target '
                              f'"{target.name}". '
-                             f'Allowed options are {target.argument_names}')
+                             f'Allowed options are {target.option_names}')
 
     return (argv, ", ".join(argstr))
 
 
-def run(selector, config, target_name, options=None, verbose=False, multiply=1,
-        prelude: Optional[str] = DEFAULT_PRELUDE, dry_run=False, log_dir=None,
-        timeout: Optional[float] = None, debug=False, workdir=None,
-        quiet_fail=False) -> bool:
+def run(selector, config, target_name, options: Optional[dict] = None, verbose=False,
+        multiply=1, prelude: Optional[str] = DEFAULT_PRELUDE, dry_run=False,
+        log_dir: Optional[str] = None, timeout: Optional[float] = None,
+        debug=False, workdir=None, quiet_fail=False) -> bool:
     '''
         Runs the specified command(s) in the foreground
 
@@ -169,8 +173,8 @@ def run(selector, config, target_name, options=None, verbose=False, multiply=1,
         return False
 
 
-def check_run(selector, config, target_name, options=None, verbose=False,
-        multiply: int = 1, prelude: Optional[str] = DEFAULT_PRELUDE,
+def check_run(selector, config, target_name, options: Optional[dict] = None,
+        verbose=False, multiply: int = 1, prelude: Optional[str] = DEFAULT_PRELUDE,
         dry_run=False, log_dir=None, timeout=None, debug=False, workdir=None):
     '''
         This behaves like `run` but, smilar to subprocess.check_call
@@ -195,7 +199,7 @@ def check_run(selector, config, target_name, options=None, verbose=False,
 
     target = config.get_target(target_name)
     if target is None:
-        raise ValueError(f'No such target "{target_name}"')
+        raise ValueError(f'No such target "{config.name}::{target_name}"')
 
     argv, argstr = _parse_options(target, options)
 
@@ -219,7 +223,7 @@ def check_run(selector, config, target_name, options=None, verbose=False,
     tasks = []
 
     print((f'ℹ️  Running "{config.name}::{target.name}" on {len(machines)} machine(s) '
-           f'with arguments=[{argstr}]') + prelude_txt)
+           f'with options={{{argstr}}}') + prelude_txt)
 
     if dry_run:
         print("dry_run was specified, so I will stop here")
@@ -256,11 +260,30 @@ def check_run(selector, config, target_name, options=None, verbose=False,
         raise RunTargetError(target.name, errs)
 
 
-def run_background(*args, **kwargs) -> multiprocessing.Process:
-    ''' Runs the specified command(s) in the background '''
+def background_run(selector, config, target_name, options: Optional[dict] = None,
+                   verbose=False, multiply: int = 1, log_dir=None, workdir=None,
+                   prelude: Optional[str] = DEFAULT_PRELUDE,dry_run=False,
+                   timeout=None, debug=False) -> multiprocessing.Process:
+    '''
+        Runs the specified command(s) in the background and returns a
+        multiprocessing.Process object to manage the background task.
 
-    # TODO check arguments before spawning the new process
+        The options are idenitical to `run` and `check_run`
+    '''
 
-    proc = multiprocessing.Process(target=run, args=args, kwargs=kwargs)
+    # Check options before spawning the new process
+    assert isinstance(config, Configuration)
+    target = config.get_target(target_name)
+    if target is None:
+        raise ValueError(f'No such target "{config.name}::{target_name}"')
+    # Will throw an error if the options are invalid
+    _parse_options(target, options)
+
+    proc = multiprocessing.Process(target=run, args=(selector, config, target_name),
+                                   kwargs={'verbose': verbose, 'multiply': multiply,
+                                           'log_dir': log_dir, 'workdir': workdir,
+                                           'prelude': prelude, 'dry_run': dry_run,
+                                           'timeout': timeout, 'debug': debug
+                                           })
     proc.start()
     return proc

@@ -4,8 +4,8 @@ inherits = "basic"
 [targets]
 install-smol = []
 
-# If you do not set a default value for an argument, it is required
+# If you do not set a default value for an option, it is required
 benchmark-smol = [["num-operations"]]
 
 [targets.setup-rust]
-arguments = [["channel", "nightly"]]
+options = [["channel", "nightly"]]

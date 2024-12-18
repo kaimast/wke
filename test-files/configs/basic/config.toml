@@ -8,17 +8,17 @@ required-packages = ["htop", "nload"]
 home-runner = "Sets up $PATH to point to ~/.local/bin"
 
 [targets]
-# You can define targets without any metadata or arguments
+# You can define targets without any metadata or options
 install-tokio = []
 
-# The most concise way to specify arguments is as a list of lists
+# The most concise way to specify options is as a list of lists
 benchmark-tokio = [["num-operations", 10000]]
 
 [targets.setup-rust]
 # But you can also define targets in a more verbose
 # and human-readable way
-arguments = [
-    { name="channel", default="stable" }, 
+options = [
+    { name="channel", default="stable", choices=['stable', 'nightly'] }, 
     { name="profile", default="minimal" }
 ]
 about = "Install the rust toolchain"

@@ -1,6 +1,6 @@
 ''' API encapsulating all the information from the config.toml file '''
 
-from typing import Any
+from typing import Any, Optional
 from os.path import isfile
 
 import tomllib
@@ -12,22 +12,28 @@ PRELUDE_FOLDER = "preludes"
 PROTECTED_NAMES = ["all", "help", "copy-data"]
 
 
-class Argument:
-    ''' Representation of an argument for a specific target '''
+class Option:
+    ''' Representation of an option for a specific target '''
 
-    def __init__(self, name: str, default: Any):
+    def __init__(self, name: str, default: Any, choices: Optional[list[Any]]):
         self._name = name
         self._default = default
+        self._choices = choices
 
     @property
     def name(self) -> str:
-        ''' The name for this argument '''
+        ''' The name for this option '''
         return self._name
 
     @property
     def required(self) -> bool:
-        ''' Does this argument have to be set? '''
+        ''' Does this option have to be set? '''
         return self._default is None
+
+    @property
+    def choice(self) -> Optional[list[Any]]:
+        ''' The allowed choices, if specified '''
+        return self._choices
 
     @property
     def default_value(self) -> Any:
@@ -90,59 +96,62 @@ class Target:
         self._path = path
         self._about = "No description"
 
-        # Keep argument as a list, because their order defines
+        # Keep option as a list, because their order defines
         # how they are passed to the target
-        self._arguments = []
+        self._options = []
 
         if isinstance(toml_config, list):
             for entry in toml_config:
-                self._parse_argument(entry)
+                self._parse_option(entry)
         elif isinstance(toml_config, dict):
             for key in toml_config.keys():
-                if key not in ["about", "arguments"]:
+                if key not in ["about", "options"]:
                     print(f'WARN: Unexpected key "{key}" for target "{name} at {path}')
 
-            if "arguments" in toml_config:
-                args = toml_config["arguments"]
+            if "options" in toml_config:
+                args = toml_config["options"]
                 if not isinstance(args, list):
-                    raise ConfigurationError(f'Invalid target arguments at {self._path}: '
-                                             f'Arguments must be a list')
+                    raise ConfigurationError(f'Invalid target options at {self._path}: '
+                                             f'Options must be a list')
 
                 for entry in args:
-                    self._parse_argument(entry)
+                    self._parse_option(entry)
             if "about" in toml_config:
                 self._about = toml_config["about"]
         else:
             raise RuntimeError(f"Target at {path} is neither a dict nor a list")
 
-    def _parse_argument(self, toml_entry):
+    def _parse_option(self, toml_entry):
         if isinstance(toml_entry, list):
+            choices = None
             if len(toml_entry) == 1:
                 name = toml_entry[0]
                 default = None
             elif len(toml_entry):
                 name, default = toml_entry
             else:
-                raise ConfigurationError(f'Invalid target argument at {self._path}: '
+                raise ConfigurationError(f'Invalid target option at {self._path}: '
                                          f'Must contain one or two entries if '
                                          f'specified as a list')
         elif isinstance(toml_entry, str):
+            choices = None
             name = toml_entry
             default = None
         elif isinstance(toml_entry, dict):
             try:
                 name = toml_entry["name"]
             except KeyError as err:
-                raise ConfigurationError(f'Invalid target argument at {self._path}: '
+                raise ConfigurationError(f'Invalid target option at {self._path}: '
                                          f'Must contain "name" if specified as '
                                          f'a dict') from err
 
+            choices = toml_entry.get("choices", None)
             default = toml_entry.get("default", None)
         else:
-            raise ConfigurationError(f'Invalid target argument at {self._path}: '
+            raise ConfigurationError(f'Invalid target option at {self._path}: '
                                      f'Not a string, dict, or list')
 
-        self._arguments.append(Argument(name, default))
+        self._options.append(Option(name, default, choices))
 
     @property
     def name(self) -> str:
@@ -160,22 +169,22 @@ class Target:
         return self._path
 
     @property
-    def arguments(self) -> list[Argument]:
-        ''' Get all arguments for this target and their default values '''
-        return self._arguments
+    def options(self) -> list[Option]:
+        ''' Get all options for this target and their default values '''
+        return self._options
 
     @property
-    def argument_names(self) -> list[str]:
-        ''' Get the names of all arguments '''
-        return [arg.name for arg in self._arguments]
+    def option_names(self) -> list[str]:
+        ''' Get the names of all options '''
+        return [arg.name for arg in self._options]
 
     def get_default_value(self, name) -> Any:
-        ''' Get the default value for the specified argument '''
+        ''' Get the default value for the specified option '''
 
-        for arg in self._arguments:
+        for arg in self._options:
             if arg.name == name:
                 return arg.default_value
-        raise ConfigurationError(f"No such argument {name}")
+        raise ConfigurationError(f"No such option {name}")
 
     @property
     def command(self) -> str:
@@ -320,7 +329,7 @@ class Configuration:
             targets = {
                 'install-packages': {
                     'about': 'Install the required debian packages',
-                    'arguments': []
+                    'options': []
                 }
             }
         else:
@@ -331,7 +340,7 @@ class Configuration:
         for info in self.targets:
             if verbose:
                 args = []
-                for arg in info.arguments:
+                for arg in info.options:
                     if arg.required:
                         args.append({"name": arg.name, "required": True})
                     else:
@@ -340,7 +349,7 @@ class Configuration:
 
                 targets[info.name] = {
                     'about': info.about,
-                    'arguments': args,
+                    'options': args,
                 }
             else:
                 targets[info.name] = info.about
@@ -441,8 +450,8 @@ class Configuration:
         return target.command
 
     def get_target_args(self, target_name):
-        ''' Get arguments for a target '''
-        return self._targets[target_name].arguments
+        ''' Get options for a target '''
+        return self._targets[target_name].options
 
     @property
     def required_ubuntu_repositories(self) -> list[str]:
