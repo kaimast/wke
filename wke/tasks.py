@@ -268,9 +268,8 @@ class Task(Thread):
 
                     # Stop polling if the commmand terminated
                     # or the task was aborted
-                    # This tries to poll all remaining output on abort
                     if self.exitcode or (not changed and self.was_aborted):
-                        break 
+                        break
 
             channel.close()
             logger.close()
@@ -320,7 +319,7 @@ class Task(Thread):
 
         # noop if there is no output
         if len(events) == 0:
-            return (False stdout_data, stderr_data)
+            return (False, stdout_data, stderr_data)
 
         while channel.recv_ready():
             stdout_data += self._wait_for_data(channel.recv)
