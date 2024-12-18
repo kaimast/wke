@@ -4,7 +4,8 @@ import os
 import sys
 
 from .helper import parse_selector, fatal_error, try_get_cluster, try_get_config
-from .. import run, RemoteExecutionError
+from wke.errors import RemoteExecutionError
+from wke.run import run, DEFAULT_PRELUDE
 
 
 def set_up_run(subparsers):
@@ -33,7 +34,7 @@ def set_up_run(subparsers):
         help="Run more than one command per machine?")
     parser.add_argument('--cwd', type=str, help="Change the working directory. \
         Useful if you invoke the command from outside the cluster folder")
-    parser.add_argument('--prelude', type=str, default=None)
+    parser.add_argument('--prelude', type=str)
     parser.add_argument('--cluster-file', type=str, default='cluster.toml')
     parser.add_argument('-D', action='append', type=str, dest='options',
         help="Set/overwrite arguments")
@@ -87,9 +88,14 @@ def _run_command(args):
                 sys.exit(1)
 
     for target in targets:
+        if args.prelude:
+            prelude = args.prelude
+        else:
+            prelude = DEFAULT_PRELUDE
+
         try:
             success = run(machines, config, target, options=options,
-                verbose=args.verbose, multiply=args.multiply, prelude=args.prelude,
+                verbose=args.verbose, multiply=args.multiply, prelude=prelude,
                 debug=args.debug, dry_run=args.dry_run, workdir=args.workdir)
         except RemoteExecutionError as err:
             print(f"[ERROR] {err}")

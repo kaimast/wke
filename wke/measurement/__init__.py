@@ -145,10 +145,11 @@ class MeasurementSession:
                    verbose=self._verbose, quiet_fail=quiet_fail,
                    log_dir=self.log_dir, timeout=timeout)
 
-    def background_run(self, selector, target, options=None,
+    def background_run(self, selector, target,
+                       options: Optional[dict[str, Any]] = None,
                        config: Optional[Configuration] = None,
                        prelude: Optional[str] = DEFAULT_PRELUDE,
-                       timeout=None) -> multiprocessing.Process:
+                       timeout: Optional[float] = None) -> multiprocessing.Process:
         '''
             Run a target in the background as part of this session.
             This is useful, for example, to start a server process that you will
@@ -167,9 +168,11 @@ class MeasurementSession:
         self._background_tasks.append(proc)
         return proc
 
-    def measure(self, selector, target, num_operations, options=None,
+    def measure(self, selector, target, num_operations,
+                options: Optional[dict[str, Any]] = None,
+                config: Optional[Configuration] = None,
                 prelude: Optional[str] = DEFAULT_PRELUDE,
-                timeout=None) -> MeasurementResult:
+                timeout: Optional[float] = None) -> MeasurementResult:
         '''
             Run the target and measure its performance/output.
 
@@ -178,7 +181,7 @@ class MeasurementSession:
         '''
 
         if options is None:
-            options = []
+            options = {}
 
         if self._collect_statistics is None:
             print("Won't collect statistics")

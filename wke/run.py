@@ -2,13 +2,11 @@
 
 ''' Interfaces to run a target or built-in command on a set of selector '''
 
-# pylint: disable=too-many-branches,too-many-locals,too-many-options
-# pylint: disable=fixme,too-many-positional-options
-
 import multiprocessing
+import copy
 
 from time import time
-from typing import Optional
+from typing import Optional, Any
 
 from .errors import RemoteExecutionError, RunTargetError
 from .util import bash_wrap
@@ -49,9 +47,9 @@ def cleanup(selector, verbose: bool):
 
 
 def _builtin_install_packages(selector, config: Configuration, verbose: bool,
-        use_sudo=True, dry_run=False):
+                              use_sudo=True, dry_run=False):
     '''
-        Install all debian packages required by the config on the specified selector
+        Install all Debian packages required by the config on the specified selector
 
         This uses sudo by default, but you can also run as root and without sudo by
         setting sudo=False
@@ -107,24 +105,36 @@ def _builtin_install_packages(selector, config: Configuration, verbose: bool,
         raise RunTargetError("install-package", errors)
 
 
-def _parse_options(target, options: Optional[dict]) -> tuple[list[str], str]:
+def _parse_options(target, provided: Optional[dict[str, Any]]) -> tuple[list[str], str]:
     '''
-        Pick default values for options or the one specified in options
+        Pick default values for options or the provided value by the the
+        call or run (or equivalent).a
+
+        Note: This funciton will modify the provided options and the dict
+        should not be (re-)used after passed to thic function.
     '''
 
-    argv = []
-    argstr = []
+    # Sorted list of options to pass to the script
+    optvec = []
 
-    if options and not isinstance(options, dict):
+    # Human-readable description of the picked options
+    optstr = []
+
+    if provided and not isinstance(provided, dict):
         raise ValueError("options must be None or a dictionary")
 
     for option in target.options:
         value = option.default_value
+        is_default = True
 
-        if options and option.name in options:
-            value = options[option.name]
-            del options[option.name]
+        if provided and option.name in provided:
+            value = provided[option.name]
+            del provided[option.name]
+            is_default = False
+        elif option.required:
+            raise ValueError(f'No value given for required option "{option.name}"')
 
+        # TODO should we allow None as valid value?
         if value is None:
             raise ValueError(f'No value set for required option "{option.name}"')
 
@@ -133,32 +143,35 @@ def _parse_options(target, options: Optional[dict]) -> tuple[list[str], str]:
                              f'Was `{value}` but allowed choices are '
                              f'{','.join(option.choices)}.')
 
-        argv.append(value)
+        optvec.append(value)
+
+        defaultstr = " (default)" if is_default else ""
 
         if isinstance(value, str):
             valstr = f'"{value}"'
         else:
             valstr = f'{value}'
-        argstr.append(f'\"{option.name}\": {valstr}')
+        optstr.append(f'\"{option.name}\": {valstr}{defaultstr}')
 
     # Check if there were any invalid options specified
-    if options:
-        for name in options.keys():
+    if provided:
+        for name in provided.keys():
             raise ValueError(f'Got unexpected option "{name}" for target '
                              f'"{target.name}". '
                              f'Allowed options are {target.option_names}')
 
-    return (argv, ", ".join(argstr))
+    return (optvec, ", ".join(optstr))
 
 
-def run(selector, config, target_name, options: Optional[dict] = None, verbose=False,
-        multiply=1, prelude: Optional[str] = DEFAULT_PRELUDE, dry_run=False,
-        log_dir: Optional[str] = None, timeout: Optional[float] = None,
+def run(selector, config, target_name, options: Optional[dict[str, Any]] = None,
+        verbose=False, multiply=1, prelude: Optional[str] = DEFAULT_PRELUDE,
+        dry_run=False, log_dir: Optional[str] = None, timeout: Optional[float] = None,
         debug=False, workdir=None, quiet_fail=False) -> bool:
     '''
         Runs the specified command(s) in the foreground
 
-        Options:
+        Arguments:
+            * options: The options to set for the command
             * verbose: Print more information to stdout?
             * multiply: Run more than one task per machine?
             * quiet_fail: Disable any output to stdout/stderr when the task
@@ -178,7 +191,7 @@ def run(selector, config, target_name, options: Optional[dict] = None, verbose=F
         return False
 
 
-def check_run(selector, config, target_name, options: Optional[dict] = None,
+def check_run(selector, config, target_name, options: Optional[dict[str, Any]] = None,
         verbose=False, multiply: int = 1, prelude: Optional[str] = DEFAULT_PRELUDE,
         dry_run=False, log_dir=None, timeout=None, debug=False, workdir=None):
     '''
@@ -192,7 +205,9 @@ def check_run(selector, config, target_name, options: Optional[dict] = None,
         raise ValueError("selector is not a slice, cluster, or machine set")
 
     assert isinstance(config, Configuration)
-    assert multiply > 0
+
+    if multiply <= 0:
+        raise ValueError("multiply option needs to be a positive number")
 
     if target_name == "install-packages":
         if debug:
@@ -206,7 +221,7 @@ def check_run(selector, config, target_name, options: Optional[dict] = None,
     if target is None:
         raise ValueError(f'No such target "{config.name}::{target_name}"')
 
-    argv, argstr = _parse_options(target, options)
+    optvec, optstr = _parse_options(target, options)
 
     # Support passing none as a string for compatibility
     if prelude in ['None', 'none']:
@@ -228,7 +243,7 @@ def check_run(selector, config, target_name, options: Optional[dict] = None,
     tasks = []
 
     print((f'ℹ️  Running "{config.name}::{target.name}" on {len(machines)} machine(s) '
-           f'with options={{{argstr}}}') + prelude_txt)
+           f'with options={{{optstr}}}') + prelude_txt)
 
     if dry_run:
         print("dry_run was specified, so I will stop here")
@@ -250,7 +265,7 @@ def check_run(selector, config, target_name, options: Optional[dict] = None,
         for i in range(multiply):
             task = Task(pos * multiply + i, minfo,
                 target.name, target.command,
-                selector.cluster, args=argv, workdir=workdir,
+                selector.cluster, options=optvec, workdir=workdir,
                 verbose=verbose, grp_size=group_size,
                 prelude=prelude, log_dir=log_dir, debug=debug)
 
@@ -281,14 +296,17 @@ def background_run(selector, config, target_name, options: Optional[dict] = None
     target = config.get_target(target_name)
     if target is None:
         raise ValueError(f'No such target "{config.name}::{target_name}"')
+
     # Will throw an error if the options are invalid
-    _parse_options(target, options)
+    # Copy here so the original options dict is not modified
+    _parse_options(target, copy.copy(options))
 
     proc = multiprocessing.Process(target=run, args=(selector, config, target_name),
                                    kwargs={'verbose': verbose, 'multiply': multiply,
                                            'log_dir': log_dir, 'workdir': workdir,
                                            'prelude': prelude, 'dry_run': dry_run,
-                                           'timeout': timeout, 'debug': debug
+                                           'timeout': timeout, 'debug': debug,
+                                           'options': options,
                                            })
     proc.start()
     return proc
