@@ -55,7 +55,7 @@ def test_run_invalid_node():
 
 def test_show_config():
     output = check_cmd_output(["show-config", "basic", "--json",
-                    "--cwd=test-files/configs"])
+                               "--cwd=test-files/configs"])
     res = json.loads(output)
 
     expected = {
@@ -70,6 +70,7 @@ def test_show_config():
             'install-packages': 'Install the required debian packages',
             'install-tokio': 'No description',
             'benchmark-tokio': 'No description',
+            'setup-golang': 'No description',
             'setup-rust': 'Install the rust toolchain',
         }
     }
@@ -79,7 +80,7 @@ def test_show_config():
 
 def test_show_config_verbose():
     output = check_cmd_output(["show-config", "basic", "--json",
-                    "--cwd=test-files/configs", "--verbose"])
+                               "--cwd=test-files/configs", "--verbose"])
     res = json.loads(output)
 
     expected = {
@@ -98,6 +99,15 @@ def test_show_config_verbose():
             'install-tokio': {
                 'about': 'No description',
                 'options': []
+            },
+            'setup-golang': {
+                'about': 'No description',
+                'options': [
+                    {
+                        'name': 'important',
+                        'required': True,
+                    },
+                ],
             },
             'benchmark-tokio': {
                 'about': 'No description',

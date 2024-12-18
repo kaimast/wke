@@ -15,15 +15,33 @@ PROTECTED_NAMES = ["all", "help", "copy-data"]
 class Option:
     ''' Representation of an option for a specific target '''
 
-    def __init__(self, name: str, default: Any, choices: Optional[list[Any]]):
+    def __init__(self, name: str, default: Optional[Any], value_type: Optional[type],
+                 choices: Optional[list[Any]]):
+        assert default is None or value_type is None \
+               or isinstance(default, value_type)
+
+        if value_type and choices:
+            for choice in choices:
+                assert isinstance(choice, value_type)
+
         self._name = name
         self._default = default
         self._choices = choices
+        self._value_type = value_type
 
     @property
     def name(self) -> str:
         ''' The name for this option '''
         return self._name
+
+    @property
+    def value_type(self) -> Optional[type]:
+        '''
+            The type the option should use (e.g., str or int).
+
+            Returns None if no such requirement was set.
+        '''
+        return self._value_type
 
     @property
     def required(self) -> bool:
@@ -125,21 +143,22 @@ class Target:
             raise RuntimeError(f"Target at {path} is neither a dict nor a list")
 
     def _parse_option(self, toml_entry):
+        choices = None
+        value_type = None
+
         if isinstance(toml_entry, list):
-            choices = None
             if len(toml_entry) == 1:
                 name = toml_entry[0]
                 default = None
             elif len(toml_entry):
                 name, default = toml_entry
+                value_type = type(default)
             else:
                 raise ConfigurationError(f'Invalid target option at {self._path}: '
                                          f'Must contain one or two entries if '
                                          f'specified as a list')
         elif isinstance(toml_entry, str):
-            choices = None
             name = toml_entry
-            default = None
         elif isinstance(toml_entry, dict):
             try:
                 name = toml_entry["name"]
@@ -150,11 +169,29 @@ class Target:
 
             choices = toml_entry.get("choices", None)
             default = toml_entry.get("default", None)
+            typestr = toml_entry.get("type", None)
+
+            if typestr:
+                match typestr:
+                    case "bool" | "boolean":
+                        value_type = bool
+                    case "str" | "string":
+                        value_type = str
+                    case "int" | "integer":
+                        value_type = int
+                    case "float":
+                        value_type = float
+                    case "any":
+                        value_type = None
+                    case _:
+                        raise ConfigurationError(f"Unsupported value type {typestr}")
+            elif default:
+                value_type = type(default)
         else:
             raise ConfigurationError(f'Invalid target option at {self._path}: '
                                      f'Not a string, dict, or list')
 
-        self._options.append(Option(name, default, choices))
+        self._options.append(Option(name, default, value_type, choices))
 
     @property
     def name(self) -> str:

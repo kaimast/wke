@@ -73,17 +73,17 @@ def _run_command(args):
 
     if args.options:
         if len(targets) > 1:
-            raise RuntimeError(("Cannot ovewrite arguments with more "
+            raise RuntimeError(("Cannot set non-default options with more "
                                 "than one target (yet)"))
 
-        for oarg in args.options:
+        for option in args.options:
             try:
-                name, value = oarg.split('=')
+                name, value = option.split('=')
                 options[name] = value
             except ValueError:
                 print(
                     f'Invalid arguments. '
-                    f'Should be of form "<key>=<value>", but was "{oarg}"'
+                    f'Should be of form "<key>=<value>", but was "{option}"'
                 )
                 sys.exit(1)
 

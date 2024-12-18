@@ -9,7 +9,7 @@ def test_basic():
     config = Configuration('basic', base_path='test-files/configs')
 
     assert sorted(config.target_names) == \
-        sorted(['setup-rust', 'install-tokio', 'benchmark-tokio'])
+        sorted(['setup-rust', 'setup-golang', 'install-tokio', 'benchmark-tokio'])
 
     target = config.get_target("setup-rust")
     assert target.option_names == ["channel", "profile"]
@@ -30,7 +30,7 @@ def test_basic():
 def test_inherit():
     config = Configuration('inherit', base_path='test-files/configs')
 
-    expected = sorted(['setup-rust', 'install-tokio', 'benchmark-tokio',
+    expected = sorted(['setup-rust', 'setup-golang', 'install-tokio', 'benchmark-tokio',
         'install-smol', 'benchmark-smol'])
     assert sorted(config.target_names) == expected
 

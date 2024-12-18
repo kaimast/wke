@@ -39,6 +39,30 @@ def test_invalid_option_type():
         pass
 
 
+def test_valid_required_option_type():
+    ''' Give an invalid type for an option '''
+
+    config = Configuration('basic', base_path='test-files/configs')
+    cluster = Cluster(path='test-files/configs/cluster.toml')
+
+    run(cluster, config, 'setup-golang', options={'important': 50.0}, dry_run=True)
+
+
+def test_invalid_required_option_type():
+    ''' Give an invalid type for an option '''
+
+    config = Configuration('basic', base_path='test-files/configs')
+    cluster = Cluster(path='test-files/configs/cluster.toml')
+
+    try:
+        # Option should be float but we pass str
+        run(cluster, config, 'setup-golang', options={'important': 'foo'},
+            dry_run=True)
+        assert False
+    except ValueError:
+        pass
+
+
 def test_backround_run():
     ''' Do dry run and see that it terminates evenutally '''
 

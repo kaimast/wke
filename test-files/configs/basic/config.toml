@@ -19,8 +19,12 @@ benchmark-tokio = [["num-operations", 10000]]
 # and human-readable way
 options = [
     { name="channel", default="stable", choices=['stable', 'nightly'] }, 
-    { name="profile", default="minimal" }
+    { name="profile", default="minimal" },
 ]
 about = "Install the rust toolchain"
 
-
+[targets.setup-golang]
+# You can also set options with no default value and a type
+options = [
+    { name="important", required=true, type="float" }
+]
