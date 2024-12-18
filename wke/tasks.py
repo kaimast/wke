@@ -245,11 +245,6 @@ class Task(Thread):
                 stderr_data = bytes()
 
                 while transport.is_active():
-                    # Stop polling if the commmand terminated
-                    # or the task was aborted
-                    if self.exitcode is not None or self.was_aborted:
-                        break
-
                     # Abort the task if we were ask to stop
                     if self._abort.is_set():
                         self._abort.clear()
@@ -262,14 +257,20 @@ class Task(Thread):
                             logger.log_meta(f'Failed to send '
                                 f'Ctrl+C to "{self.name}": {err}')
 
+                    changed, stdout_data, stderr_data = self._poll_ssh_connection(
+                            stdout_data, stderr_data,
+                            logger, channel, epoll)
+
                     # If the command terminated, close the channel
                     if channel.exit_status_ready():
                         self._exitcode = channel.recv_exit_status()
                         channel.close()
 
-                    stdout_data, stderr_data = self._poll_ssh_connection(
-                            stdout_data, stderr_data,
-                            logger, channel, epoll)
+                    # Stop polling if the commmand terminated
+                    # or the task was aborted
+                    # This tries to poll all remaining output on abort
+                    if self.exitcode or (not changed and self.was_aborted):
+                        break 
 
             channel.close()
             logger.close()
@@ -319,7 +320,7 @@ class Task(Thread):
 
         # noop if there is no output
         if len(events) == 0:
-            return (stdout_data, stderr_data)
+            return (False stdout_data, stderr_data)
 
         while channel.recv_ready():
             stdout_data += self._wait_for_data(channel.recv)
@@ -333,7 +334,7 @@ class Task(Thread):
             if len(stderr_data) > 0:
                 stderr_data = self._split_lines(stderr_data, logger.log_error)
 
-        return (stdout_data, stderr_data)
+        return (True, stdout_data, stderr_data)
 
 
 def _stop_all(tasks: list[Task]):
