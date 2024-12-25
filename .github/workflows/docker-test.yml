@@ -1,0 +1,28 @@
+name: CI 
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Set up Docker
+      uses: docker/setup-docker-action@v4
+    - name: Configure Docker
+      run: |
+        sudo groupadd docker
+        sudo usermod -a -Gdocker $USER
+        newgrp docker
+    - name: Install pytest 
+      run: |
+        python -m pip install --upgrade pip
+        make install
+        pip install pytest
+    - name: Run Test 
+      run: make docker-test
