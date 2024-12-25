@@ -16,7 +16,7 @@ jobs:
       uses: docker/setup-docker-action@v4
     - name: Configure Docker
       run: |
-        sudo groupadd docker
+        sudo groupadd docker || true
         sudo usermod -a -Gdocker $USER
         newgrp docker
     - name: Install pytest 
