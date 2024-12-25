@@ -12,8 +12,6 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-    - name: Set up SSH agent
-      uses: webfactory/ssh-agent@v0.5.4
     - name: Set up Docker
       uses: docker/setup-docker-action@v4
     - name: Configure Docker
@@ -21,6 +19,7 @@ jobs:
         sudo groupadd docker || true
         sudo usermod -a -Gdocker $USER
         newgrp docker
+        sudo apt-get install openssh-client -y
     - name: Install pytest 
       run: |
         python -m pip install --upgrade pip
@@ -28,5 +27,5 @@ jobs:
         pip install pytest
     - name: Run Test 
       run: |
-        eval ssh-agent $SHELL
+        eval `ssh-agent -s`
         make docker-test
