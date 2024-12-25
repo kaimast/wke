@@ -2,6 +2,7 @@
 
 from threading import Thread, Event
 from time import time, sleep
+from typing import Optional
 
 import signal
 import socket
@@ -30,7 +31,6 @@ class Task(Thread):
         self._machine_info = machine_info
         self._task_name = task_name
         self._command = command
-        self.exception = None
         self._cluster = cluster
         self._workdir = workdir
         self._options = options
@@ -38,18 +38,18 @@ class Task(Thread):
         self._group_index = grp_index
         self._group_size = grp_size
         self._username = cluster.username if username in [None, ""] else username
-        self.exitcode = None
-        self.stop = Event()
-        self.was_stopped = False
-        self.result = None
-        self.log_dir = log_dir
-        self.prelude = prelude
-        self.debug = debug
+        self._exitcode = None
+        self._abort = Event()
+        self._was_aborted = False
+        self._log_dir = log_dir
+        self._prelude = prelude
+        self._debug = debug
+        self.exception = None
 
         Thread.__init__(self)
 
     @property
-    def machine_name(self):
+    def machine_name(self) -> str:
         ''' The name of the associated machine '''
         return self._machine_info.name
 
@@ -75,7 +75,7 @@ class Task(Thread):
         return f"Connection to {self.machine_name}"
 
     @property
-    def username(self):
+    def username(self) -> str:
         ''' The username that will be used by the SSH connection '''
         return self._username
 
@@ -85,7 +85,7 @@ class Task(Thread):
         return self._machine_info.external_addr
 
     @property
-    def task_name(self):
+    def task_name(self) -> str:
         '''
             Returns a name/description of the associated task, e.g.,
             the target name.
@@ -93,20 +93,38 @@ class Task(Thread):
         return self._task_name
 
     @property
-    def command(self):
+    def command(self) -> str:
         ''' Returns the full command, e.g., the contents of the target file '''
         return self._command
+
+    @property
+    def exitcode(self) -> Optional[int]:
+        '''
+        The command's exitcode.
+        Only exists if the command finished and was not aborted
+        '''
+        return self._exitcode
 
     @property
     def internal_addr(self):
         ''' Get the internal IP/hostname this machine is known by '''
         return self._machine_info.internal_addr
 
-    def flag_stop(self):
-        ''' Stop whatever command is running right now '''
-        self.stop.set()
+    @property
+    def was_aborted(self):
+        '''
+        Was this task aborted? Will return True after the abort()
+        call has been processed by the background Thread.
+        '''
+        return self._was_aborted
 
-    def _generate_options(self):
+    def abort(self):
+        ''' Stop whatever command is running right now '''
+        self._abort.set()
+
+    def _generate_options(self) -> str:
+        ''' Creates the argument string to pass to the command '''
+
         options = ""
 
         for option in self._options:
@@ -141,8 +159,8 @@ class Task(Thread):
         else:
             cmd = ""
 
-        if self.prelude and self.prelude != "":
-            cmd += self.prelude
+        if self._prelude and self._prelude != "":
+            cmd += self._prelude
 
         first_line = self.command.splitlines()[0]
 
@@ -180,9 +198,9 @@ class Task(Thread):
                 self.machine_name, self.task_name, str(err))
             return
 
-        logger = MachineLogger(self.log_dir, self.machine_name, self._verbose)
+        logger = MachineLogger(self._log_dir, self.machine_name, self._verbose)
 
-        if self.debug:
+        if self._debug:
             logger.log_meta(f'Executing command on "{self.machine_name}": {cmd}')
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -226,27 +244,35 @@ class Task(Thread):
                 stdout_data = bytes()
                 stderr_data = bytes()
 
-                while not channel.eof_received:
-                    if self.stop.is_set():
-                        self.stop.clear()
-                        self.was_stopped = True
+                while transport.is_active():
+                    # Abort the task if we were ask to stop
+                    if self._abort.is_set():
+                        self._abort.clear()
+                        self._was_aborted = True
 
-                        # Send Ctrl+C
                         try:
-                            channel.send("\x03")
-                            logger.log_meta(f'Sent Ctrl+C to "{self.name}"')
+                            channel.shutdown_write()
+                            print(f"INFO: Closed channel for {self.machine_name}")
                         except socket.error as err:
                             logger.log_meta(f'Failed to send '
                                 f'Ctrl+C to "{self.name}": {err}')
 
-                    stdout_data, stderr_data = self._poll_ssh_connection(
+                    changed, stdout_data, stderr_data = self._poll_ssh_connection(
                             stdout_data, stderr_data,
                             logger, channel, epoll)
 
-                self.exitcode = channel.recv_exit_status()
+                    # If the command terminated, close the channel
+                    if channel.exit_status_ready():
+                        self._exitcode = channel.recv_exit_status()
+                        channel.close()
 
-            logger.close()
+                    # Stop polling if the commmand terminated
+                    # or the task was aborted
+                    if self.exitcode or (not changed and self.was_aborted):
+                        break
+
             channel.close()
+            logger.close()
 
     def _wait_for_data(self, func):
         ''' Helper to read stdout or stderr output '''
@@ -288,11 +314,12 @@ class Task(Thread):
         on the next poll.
         '''
 
-        events = epoll.poll(1)
+        # Poll every second
+        events = epoll.poll(timeout=1.0)
 
         # noop if there is no output
         if len(events) == 0:
-            return (stdout_data, stderr_data)
+            return (False, stdout_data, stderr_data)
 
         while channel.recv_ready():
             stdout_data += self._wait_for_data(channel.recv)
@@ -306,12 +333,13 @@ class Task(Thread):
             if len(stderr_data) > 0:
                 stderr_data = self._split_lines(stderr_data, logger.log_error)
 
-        return (stdout_data, stderr_data)
+        return (True, stdout_data, stderr_data)
 
 
 def _stop_all(tasks: list[Task]):
+    ''' Stops all tasks in the given list '''
     for task in tasks:
-        task.flag_stop()
+        task.abort()
 
 
 def _try_join_task(task: Task, all_tasks: list[Task],
@@ -326,7 +354,7 @@ def _try_join_task(task: Task, all_tasks: list[Task],
     if task.exitcode is None:
         print(f"⚠️  No exitcode for machine {task.machine_name}")
 
-    if not task.was_stopped and task.exitcode != 0:
+    if not task.was_aborted and task.exitcode != 0:
         all_errors.append(f'Machine {task.machine_name} had '
                           f'non-zero exitcode {task.exitcode}')
         # stop all others if one failes
