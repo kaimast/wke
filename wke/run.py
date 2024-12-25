@@ -8,7 +8,7 @@ import copy
 from time import time
 from typing import Optional, Any
 
-from .errors import RemoteExecutionError, RunTargetError
+from .errors import RunTargetError
 from .util import bash_wrap
 from .tasks import Task, join_all
 from .cluster import Cluster
@@ -133,8 +133,12 @@ def _parse_options(target, provided: Optional[dict[str, Any]]) -> tuple[list[str
             value = provided[option.name]
             del provided[option.name]
             is_default = False
+        elif option.required and provided:
+            raise ValueError(f'No value given for required option "{option.name}". '
+                             f'Given options were "{provided.keys()}".')
         elif option.required:
-            raise ValueError(f'No value given for required option "{option.name}"')
+            raise ValueError(f'Option "{option.name}" is required, '
+                             f'but no options were set.')
 
         # TODO should we allow None as valid value?
         if value is None:
@@ -190,7 +194,7 @@ def run(selector, config, target_name, options: Optional[dict[str, Any]] = None,
             multiply=multiply, prelude=prelude, dry_run=dry_run,
             log_dir=log_dir, timeout=timeout, debug=debug, workdir=workdir)
         return True
-    except RemoteExecutionError as err:
+    except RunTargetError as err:
         if not quiet_fail:
             print('❗' + str(err))
 

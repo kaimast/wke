@@ -1,0 +1,5 @@
+[cluster]
+username="kai"
+
+[machines]
+localhost = ["localhost"]

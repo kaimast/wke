@@ -12,7 +12,7 @@ from time import sleep
 from os import rename
 from os.path import isfile, getmtime
 
-from ..errors import ClusterError, ConfigurationError
+from ..errors import ClusterError, RunTargetError, ConfigurationError
 from .printer import ResultPrinter
 from .params import parse_parameters, ExponentialSteps, LinearSteps, ListSteps
 from .params import Parameter, ParameterSet
@@ -55,8 +55,12 @@ def _run_benchmark(benchmark_func, parameters: dict[str, Parameter],
         # ensure whatever benchmark func does will not modify parameters
         bench_params = copy.deepcopy(parameters)
 
-        success = benchmark_func(bench_params, collect_statistics, result_printer,
-                                 verbose=verbose)
+        try:
+            success = benchmark_func(bench_params, collect_statistics, result_printer,
+                                     verbose=verbose)
+        except RunTargetError as err:
+            print(f"ERROR: {err}")
+            success = False
 
         if not success:
             sys.exit(-1)

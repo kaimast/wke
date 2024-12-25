@@ -23,3 +23,7 @@ package:
 
 install:
 	pip install .
+
+container: docker-test/Dockerfile
+	cd docker-test && docker buildx build --platform linux/amd64 -t wke-test-container . 
+    
