@@ -38,3 +38,11 @@ You will execute them using the `wke run` command.
 Preludes are not targets, but can help reducing boilerplate code in a target. For example, they can be used to export environment variables before running experiments.
 
 In most cases as single engine file should suffice to run your experiments.
+
+## Testing
+
+### Docker Tests
+
+wke comes with integraton tests that set up a Docker container as the remote server.
+
+For these tests to work, Docker and buildx need to be installed. The current user also must be part of the `docker` group and there has to be ssh-agent running in the terminal.

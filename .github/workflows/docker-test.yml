@@ -25,4 +25,6 @@ jobs:
         make install
         pip install pytest
     - name: Run Test 
-      run: make docker-test
+      run: |
+        eval ssh-agent $SHELL
+        make docker-test
