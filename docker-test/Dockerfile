@@ -1,7 +1,7 @@
 FROM ubuntu:24.04
 
 RUN apt-get update && \
-    apt-get install -y openssh-server && \
+    apt-get install -y openssh-server rsync && \
     mkdir /var/run/sshd
 
 # Create a non-root user 'testuser' with password 'testpassword'

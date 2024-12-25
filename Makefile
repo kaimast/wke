@@ -22,8 +22,13 @@ package:
 	python3 -m build
 
 install:
-	pip install .
+	pip install -e .
 
-container: docker-test/Dockerfile
-	cd docker-test && docker buildx build --platform linux/amd64 -t wke-test-container . 
-    
+test-container: docker-test/Dockerfile
+	cd docker-test && docker buildx build --platform linux/amd64 -t wke-test-container .
+
+docker-test: test-container
+	docker stop wke-test || true
+	docker run --rm -d -p 2222:22 --name wke-test wke-test-container
+	pytest ./docker-test/test_run.py
+	docker stop wke-test || true	

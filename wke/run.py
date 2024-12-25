@@ -252,7 +252,7 @@ def check_run(selector, config, target_name, options: Optional[dict[str, Any]] =
     machines = selector.get_all_machines()
     tasks = []
 
-    print((f'ℹ️  Running "{config.name}::{target.name}" on {len(machines)} machine(s) '
+    print((f'ℹ️ Running "{config.name}::{target.name}" on {len(machines)} machine(s) '
            f'with options={{{optstr}}}') + prelude_txt)
 
     if dry_run:

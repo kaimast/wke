@@ -1,5 +1,6 @@
 [cluster]
-username="kai"
+username="testuser"
+ssh-port=2222
 
 [machines]
-localhost = ["localhost"]
+container = ["localhost"]

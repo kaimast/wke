@@ -1,7 +1,7 @@
 ''' API encapsulating all the information from the cluster.toml file '''
 
 from typing import Optional, Any
-from subprocess import call, CalledProcessError
+from subprocess import call, check_call, CalledProcessError
 
 import shlex
 import tomllib
@@ -213,6 +213,8 @@ class Cluster:
 
             The username flag determines as which user we invoke SSH
             (will be the clusters default user if not specified)
+
+            Throws a RemoteExecutionException if copying fails.
         '''
 
         if not username:
@@ -225,25 +227,29 @@ class Cluster:
                f'{username}@{self.get_machine(machine).external_addr}:{destination}')
 
         try:
-            call(shlex.split(cmd))
+            check_call(shlex.split(cmd))
         except CalledProcessError as err:
-            raise RemoteExecutionError(machine, cmd, "rsync failed: {err}") from err
+            raise RemoteExecutionError(machine, cmd, f"rsync failed: {err}") from err
 
     def copy_from(self, machine: str, source: str, destination: str,
                   username: Optional[str] = None):
-        ''' Copy a file from a machine to the local computer '''
+        '''
+            Copy a file from a machine to the local computer
+
+            Throws a RemoteExecutionException if copying fails.
+         '''
 
         print(f"{machine}:{source} -> {destination}")
 
         cmd = (f'rsync -zrp --rsh="ssh -o UserKnownHostsFile=/dev/null '
                f'-p{self.ssh_port} -o StrictHostKeyChecking=no" '
-               f'{self.username}@{self.get_machine(machine).external_addr}:source '
+               f'{self.username}@{self.get_machine(machine).external_addr}:{source} '
                f'{destination}')
 
         try:
-            call(shlex.split(cmd))
+            check_call(shlex.split(cmd))
         except CalledProcessError as err:
-            raise RemoteExecutionError(machine, cmd, "rsync failed: {err}") from err
+            raise RemoteExecutionError(machine, cmd, f"rsync failed: {err}") from err
 
     def execute_on(self, machine: str, cmd: str):
         ''' Execute a single command on a machine '''
@@ -308,6 +314,8 @@ class Cluster:
             cmd = (f'rsync -zrp --rsh="ssh -o UserKnownHostsFile=/dev/null '
                    f'-p{self.ssh_port} -o StrictHostKeyChecking=no" '
                    f'{self.username}@{minfo.external_addr}:{filename} {target}')
+
+            print(cmd)
 
             if call(shlex.split(cmd)) != 0:
                 msg = "command has non-zero returncode\n" + cmd
