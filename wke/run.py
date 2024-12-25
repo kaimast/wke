@@ -47,7 +47,7 @@ def cleanup(selector, verbose: bool):
 
 
 def _builtin_install_packages(selector, config: Configuration, verbose: bool,
-                              use_sudo=True, dry_run=False):
+                              use_sudo=True, dry_run=False, debug=False):
     '''
         Install all Debian packages required by the config on the specified selector
 
@@ -90,11 +90,13 @@ def _builtin_install_packages(selector, config: Configuration, verbose: bool,
         # bash might not be the default shell
         command = bash_wrap(add_repos + [
             sudo + "apt-get update",
-            sudo + "apt-get install -y " + " ".join(packages)
+            sudo + "DEBIAN_FRONTEND=noninteractive apt-get install -y "
+                 + " ".join(packages)
         ])
 
         task = Task(0, minfo, "install-packages", command,
-                    selector.cluster, verbose=verbose, username=user)
+                    selector.cluster, verbose=verbose, username=user,
+                    debug=debug)
         task.start()
         tasks.append(task)
 
@@ -218,7 +220,7 @@ def check_run(selector, config, target_name, options: Optional[dict[str, Any]] =
             print('Found built-in "install-packages"')
 
         _builtin_install_packages(selector, config,
-                   dry_run=dry_run, verbose=verbose)
+                   dry_run=dry_run, verbose=verbose, debug=debug)
         return
 
     target = config.get_target(target_name)
