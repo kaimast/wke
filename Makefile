@@ -30,6 +30,7 @@ test-container: docker-test/Dockerfile
 docker-test: test-container
 	docker stop wke-test || true
 	docker run --rm -d -p 2222:22 --name wke-test wke-test-container
+	chmod go-r ./docker-test/ssh_key
 	ssh-add ./docker-test/ssh_key
 	pytest ./docker-test/test_run.py
 	docker stop wke-test || true	
