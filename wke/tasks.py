@@ -252,7 +252,7 @@ class Task(Thread):
 
                         try:
                             channel.shutdown_write()
-                            print(f"INFO: Closed channel for {self.machine_name}")
+                            print(f"Closed channel for {self.machine_name}")
                         except socket.error as err:
                             logger.log_meta(f'Failed to send '
                                 f'Ctrl+C to "{self.name}": {err}')
@@ -264,12 +264,18 @@ class Task(Thread):
                     # If the command terminated, close the channel
                     if channel.exit_status_ready():
                         self._exitcode = channel.recv_exit_status()
+                        if self._debug:
+                            logger.log_meta(f"Task for {self.machine_name} "
+                                            f"got exitcode {self.exitcode}")
                         channel.close()
 
                     # Stop polling if the commmand terminated
                     # or the task was aborted
-                    if self.exitcode or (not changed and self.was_aborted):
+                    if self.exitcode is not None or (not changed and self.was_aborted):
                         break
+
+            if self._debug:
+                logger.log_meta("Task for {self.machine_name} finished")
 
             channel.close()
             logger.close()
@@ -390,7 +396,7 @@ def join_all(tasks: list[Task], start_time=None, verbose=True,
 
     def signal_handler(_signum, _frame):
         # gracefully shutdown and unmount everything
-        print("🛑 Got kill signal. Stopping all machines...")
+        print("🛑 Got kill signal. Stopping all outstanding tasks...")
         _stop_all(tasks)
 
     if poll_interval < 0.0:
@@ -406,7 +412,7 @@ def join_all(tasks: list[Task], start_time=None, verbose=True,
 
         elapsed = time() - start_time
         if timeout and elapsed > timeout:
-            print("⚠️  Timeout reached: stopping machines")
+            print("⚠️  Timeout reached: stopping all outstanding tasks")
             has_timed_out = True
             _stop_all(tasks)
 

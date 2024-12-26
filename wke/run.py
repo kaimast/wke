@@ -8,7 +8,7 @@ import copy
 from time import time
 from typing import Optional, Any
 
-from .errors import RemoteExecutionError, RunTargetError
+from .errors import RunTargetError
 from .util import bash_wrap
 from .tasks import Task, join_all
 from .cluster import Cluster
@@ -47,7 +47,7 @@ def cleanup(selector, verbose: bool):
 
 
 def _builtin_install_packages(selector, config: Configuration, verbose: bool,
-                              use_sudo=True, dry_run=False):
+                              use_sudo=True, dry_run=False, debug=False):
     '''
         Install all Debian packages required by the config on the specified selector
 
@@ -90,11 +90,13 @@ def _builtin_install_packages(selector, config: Configuration, verbose: bool,
         # bash might not be the default shell
         command = bash_wrap(add_repos + [
             sudo + "apt-get update",
-            sudo + "apt-get install -y " + " ".join(packages)
+            sudo + "DEBIAN_FRONTEND=noninteractive apt-get install -y "
+                 + " ".join(packages)
         ])
 
         task = Task(0, minfo, "install-packages", command,
-                    selector.cluster, verbose=verbose, username=user)
+                    selector.cluster, verbose=verbose, username=user,
+                    debug=debug)
         task.start()
         tasks.append(task)
 
@@ -131,8 +133,12 @@ def _parse_options(target, provided: Optional[dict[str, Any]]) -> tuple[list[str
             value = provided[option.name]
             del provided[option.name]
             is_default = False
+        elif option.required and provided:
+            raise ValueError(f'No value given for required option "{option.name}". '
+                             f'Given options were "{provided.keys()}".')
         elif option.required:
-            raise ValueError(f'No value given for required option "{option.name}"')
+            raise ValueError(f'Option "{option.name}" is required, '
+                             f'but no options were set.')
 
         # TODO should we allow None as valid value?
         if value is None:
@@ -188,7 +194,7 @@ def run(selector, config, target_name, options: Optional[dict[str, Any]] = None,
             multiply=multiply, prelude=prelude, dry_run=dry_run,
             log_dir=log_dir, timeout=timeout, debug=debug, workdir=workdir)
         return True
-    except RemoteExecutionError as err:
+    except RunTargetError as err:
         if not quiet_fail:
             print('❗' + str(err))
 
@@ -218,7 +224,7 @@ def check_run(selector, config, target_name, options: Optional[dict[str, Any]] =
             print('Found built-in "install-packages"')
 
         _builtin_install_packages(selector, config,
-                   dry_run=dry_run, verbose=verbose)
+                   dry_run=dry_run, verbose=verbose, debug=debug)
         return
 
     target = config.get_target(target_name)
@@ -246,7 +252,7 @@ def check_run(selector, config, target_name, options: Optional[dict[str, Any]] =
     machines = selector.get_all_machines()
     tasks = []
 
-    print((f'ℹ️  Running "{config.name}::{target.name}" on {len(machines)} machine(s) '
+    print((f'ℹ️ Running "{config.name}::{target.name}" on {len(machines)} machine(s) '
            f'with options={{{optstr}}}') + prelude_txt)
 
     if dry_run:

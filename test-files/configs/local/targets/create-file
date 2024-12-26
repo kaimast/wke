@@ -1,0 +1,4 @@
+#! /bin/env python3
+
+with open('/tmp/test-dir/testfile.txt', 'w') as file:
+    file.write("hello wke!\n")

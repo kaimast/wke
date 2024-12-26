@@ -8,8 +8,8 @@ import multiprocessing
 from time import localtime, strftime, time
 from typing import Optional, Any
 
-from ..run import run, background_run, DEFAULT_PRELUDE
-from ..errors import MeasurementFailedError
+from ..run import run, check_run, background_run, DEFAULT_PRELUDE
+from ..errors import MeasurementFailedError, RunTargetError
 from ..config import Configuration
 
 from .data_collector import DataCollector
@@ -127,6 +127,24 @@ class MeasurementSession:
             proc.terminate()
             proc.join()
 
+    def check_run(self, selector, target, config: Optional[Configuration] = None,
+            options: Optional[dict[str, Any]] = None,
+            prelude: Optional[str] = DEFAULT_PRELUDE,
+            timeout=None, quiet_fail=False) -> bool:
+        '''
+            Run a target as part of this session, but do not measure.
+
+            This is useful, for example, to prepare your measurement by setting up test
+            data.
+            The options are identical to `wke.run`
+        '''
+        if config is None:
+            config = self.config
+
+        return run(selector, config, target, prelude=prelude, options=options,
+                   verbose=self._verbose, quiet_fail=quiet_fail,
+                   log_dir=self.log_dir, timeout=timeout)
+
     def run(self, selector, target, config: Optional[Configuration] = None,
             options: Optional[dict[str, Any]] = None,
             prelude: Optional[str] = DEFAULT_PRELUDE,
@@ -176,8 +194,8 @@ class MeasurementSession:
         '''
             Run the target and measure its performance/output.
 
-            This must be called at most once per Session object and
-            the Session object should not be used anymore after calling measure().
+            This must be called at most once per MeasurementSession object
+            and the object should not be used anymore after calling measure().
         '''
 
         if options is None:
@@ -202,12 +220,14 @@ class MeasurementSession:
 
         # Actually run the thing
         start = time()
-        success = run(selector, self.config, target, prelude=prelude, options=options,
-                      verbose=self._verbose, log_dir=self.log_dir, timeout=timeout)
+        try:
+            check_run(selector, self.config, target, prelude=prelude, options=options,
+                  verbose=self._verbose, log_dir=self.log_dir, timeout=timeout)
+        except RunTargetError as err:
+            raise MeasurementFailedError(f"Measurement failed: {err}") from err
+        except ValueError as err:
+            raise MeasurementFailedError(f"Measurement failed: {err}") from err
         end = time()
-
-        if not success:
-            raise MeasurementFailedError("Target did not execute successfully")
 
         result = MeasurementResult(start, end, num_operations, target, options)
         result.print_summary()

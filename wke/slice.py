@@ -139,7 +139,7 @@ class Slice:
         ''' Copy a file with the specified name from all machines in this slice
             to the local machine '''
         for mname in self.machine_names:
-            self._cluster.copy_to(mname, source, target, username=username)
+            self._cluster.copy_from(mname, source, target, username=username)
 
     def open_remote_at_index(self, index: int, source: str):
         ''' Opens a file at the machine with the specified index '''

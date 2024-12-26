@@ -20,4 +20,4 @@ def _connect(args):
     print("Found machine. Launching SSH.")
 
     subprocess.run(['ssh', f'{cluster.username}@{minfo.external_addr}',
-         f'-P{cluster.ssh_port}'], check=False)
+         f'-p{cluster.ssh_port}'], check=False)

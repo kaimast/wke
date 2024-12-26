@@ -1,7 +1,7 @@
 ''' API encapsulating all the information from the cluster.toml file '''
 
 from typing import Optional, Any
-from subprocess import call
+from subprocess import call, check_call, CalledProcessError
 
 import shlex
 import tomllib
@@ -206,31 +206,50 @@ class Cluster:
         ''' Get the names of all machines in this cluster '''
         return [minfo.name for minfo in self.get_all_machines()]
 
-    def copy_to(self, machine: str, src: str, destination: str,
+    def copy_to(self, machine: str, source: str, destination: str,
                 username: Optional[str] = None):
         '''
             Copy a file from the local computer to a machine.
 
             The username flag determines as which user we invoke SSH
             (will be the clusters default user if not specified)
+
+            Throws a RemoteExecutionException if copying fails.
         '''
 
         if not username:
             username = self.username
 
-        print(src + " -> " + destination + " @ " + machine)
-        return call(shlex.split('rsync -zrp --rsh="ssh -o UserKnownHostsFile=/dev/null -p'
-            + str(self.ssh_port) + ' -o StrictHostKeyChecking=no" ' + src + " " + username
-            + "@" + self.get_machine(machine).external_addr + ":" + destination))
+        print(f"{source} -> {machine}:{destination}")
 
-    def copy_from(self, machine, src, destination):
-        ''' Copy a file from a machine to the local computer '''
+        cmd = (f'rsync -zrp --rsh="ssh -o UserKnownHostsFile=/dev/null '
+               f'-p{self.ssh_port} -o StrictHostKeyChecking=no" {source} '
+               f'{username}@{self.get_machine(machine).external_addr}:{destination}')
 
-        print(src + " @ " + machine + " -> " + destination)
-        return call(shlex.split('rsync -zrp --rsh="ssh -o UserKnownHostsFile=/dev/null -p'
-            + str(self.ssh_port) + ' -o StrictHostKeyChecking=no" ' + self.username
-            + "@" + self.get_machine(machine).external_addr + ":"
-            + src + " " + destination))
+        try:
+            check_call(shlex.split(cmd))
+        except CalledProcessError as err:
+            raise RemoteExecutionError(machine, cmd, f"rsync failed: {err}") from err
+
+    def copy_from(self, machine: str, source: str, destination: str,
+                  username: Optional[str] = None):
+        '''
+            Copy a file from a machine to the local computer
+
+            Throws a RemoteExecutionException if copying fails.
+         '''
+
+        print(f"{machine}:{source} -> {destination}")
+
+        cmd = (f'rsync -zrp --rsh="ssh -o UserKnownHostsFile=/dev/null '
+               f'-p{self.ssh_port} -o StrictHostKeyChecking=no" '
+               f'{self.username}@{self.get_machine(machine).external_addr}:{source} '
+               f'{destination}')
+
+        try:
+            check_call(shlex.split(cmd))
+        except CalledProcessError as err:
+            raise RemoteExecutionError(machine, cmd, f"rsync failed: {err}") from err
 
     def execute_on(self, machine: str, cmd: str):
         ''' Execute a single command on a machine '''
@@ -259,7 +278,7 @@ class Cluster:
             paramiko.agent.AgentRequestHandler(channel)
 
             cmdstr = ' '.join(cmd)
-            print("Running command: " + cmdstr)
+            print(f"Running command: {cmdstr}")
 
             channel.exec_command(cmdstr)
             stdout = channel.makefile()
@@ -272,7 +291,7 @@ class Cluster:
     def open_remote(self, filename: str, offset=0,
                     skip_missing=False, num_machines=None):
         '''
-            Copy and open files that are store on a remote machine.
+            Copy and open files that are stored on a remote machine.
             This returns a list of file handles.
 
             If you set set skip_missing to True, it will not throw
@@ -293,9 +312,10 @@ class Cluster:
             print(f'{minfo.name}:{filename} -> {target}')
 
             cmd = (f'rsync -zrp --rsh="ssh -o UserKnownHostsFile=/dev/null '
-              f'-p{self.ssh_port} -o StrictHostKeyChecking=no" '
-              f'{self.username}@{minfo.external_addr}:{filename} '
-              f'{target}')
+                   f'-p{self.ssh_port} -o StrictHostKeyChecking=no" '
+                   f'{self.username}@{minfo.external_addr}:{filename} {target}')
+
+            print(cmd)
 
             if call(shlex.split(cmd)) != 0:
                 msg = "command has non-zero returncode\n" + cmd
