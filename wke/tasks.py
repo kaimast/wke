@@ -253,6 +253,10 @@ class Task(Thread):
                 stderr_data = bytes()
 
                 while transport.is_active():
+                    stdout_data, stderr_data = self._poll_ssh_connection(
+                            stdout_data, stderr_data,
+                            logger, channel, epoll)
+
                     # Abort the task if we were ask to stop
                     if self._abort.is_set():
                         self._abort.clear()
@@ -265,10 +269,6 @@ class Task(Thread):
                             logger.log_meta(f'Failed to send '
                                 f'Ctrl+C to "{self.name}": {err}')
 
-                    changed, stdout_data, stderr_data = self._poll_ssh_connection(
-                            stdout_data, stderr_data,
-                            logger, channel, epoll)
-
                     # If the command terminated, close the channel
                     if channel.exit_status_ready():
                         self._exitcode = channel.recv_exit_status()
@@ -279,7 +279,7 @@ class Task(Thread):
 
                     # Stop polling if the commmand terminated
                     # or the task was aborted
-                    if self.exitcode is not None or (not changed and self.was_aborted):
+                    if self.exitcode is not None or self.was_aborted:
                         break
 
             if self._debug:
@@ -288,8 +288,8 @@ class Task(Thread):
             channel.close()
             logger.close()
 
-    def _wait_for_data(self, func):
-        ''' Helper to read stdout or stderr output '''
+    def _fetch_data(self, func):
+        ''' Helper to read stdout or stderr output, if any '''
         try:
             return func(1024)
         except socket.timeout:
@@ -319,7 +319,8 @@ class Task(Thread):
 
         return bytes()
 
-    def _poll_ssh_connection(self, stdout_data, stderr_data, logger, channel, epoll):
+    def _poll_ssh_connection(self, stdout_data: bytes, stderr_data: bytes,
+                             logger, channel, epoll) -> tuple[bytes, bytes]:
         '''
         Check for any new output to stdout or stderr from the SSH connection
 
@@ -329,31 +330,27 @@ class Task(Thread):
         '''
 
         # Poll every second
-        events = epoll.poll()
-
-        # noop if there is no output
-        if len(events) == 0:
-            return (False, stdout_data, stderr_data)
+        _ = epoll.poll()
 
         try:
-            if eventfd_read(self._notify) > 0:
+            if eventfd_read(self._notify) > 0 and self._debug:
                 print("Task thread got woken up")
         except BlockingIOError:
             pass  # Happens if there is no event
 
         while channel.recv_ready():
-            stdout_data += self._wait_for_data(channel.recv)
+            stdout_data += self._fetch_data(channel.recv)
 
             if len(stdout_data) > 0:
                 stdout_data = self._split_lines(stdout_data, logger.log_info)
 
         while channel.recv_stderr_ready():
-            stderr_data += self._wait_for_data(channel.recv_stderr)
+            stderr_data += self._fetch_data(channel.recv_stderr)
 
             if len(stderr_data) > 0:
                 stderr_data = self._split_lines(stderr_data, logger.log_error)
 
-        return (True, stdout_data, stderr_data)
+        return (stdout_data, stderr_data)
 
 
 def _stop_all(tasks: list[Task]):
@@ -410,7 +407,9 @@ def join_all(tasks: list[Task], start_time=None, verbose=True,
 
     def signal_handler(_signum, _frame):
         # gracefully shutdown and unmount everything
-        print("🛑 Got kill signal. Stopping all outstanding tasks...")
+        error = "Got kill signal. Stopping all outstanding tasks."
+        print(f"🛑 {error}")
+        errors.append(error)
         _stop_all(tasks)
 
     if poll_interval < 0.0:
