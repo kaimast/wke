@@ -5,13 +5,14 @@ from subprocess import call, check_call, CalledProcessError
 
 import shlex
 import tomllib
-import paramiko
 
 from .slice import Slice
 from .set import MachineSet
 from .errors import RemoteExecutionError
 from .machines import MachineInfo
 from .errors import ClusterError
+from .tasks import Task, join_all
+from .util import bash_wrap
 
 
 class Cluster:
@@ -237,7 +238,7 @@ class Cluster:
             Copy a file from a machine to the local computer
 
             Throws a RemoteExecutionException if copying fails.
-         '''
+        '''
 
         print(f"{machine}:{source} -> {destination}")
 
@@ -251,48 +252,31 @@ class Cluster:
         except CalledProcessError as err:
             raise RemoteExecutionError(machine, cmd, f"rsync failed: {err}") from err
 
-    def execute_on(self, machine: str, cmd: str | list[str]):
+    def execute_on(self, machine: str, cmd: str | list[str],
+                   verbose=False, username=None):
         ''' Execute a single command on a machine '''
 
         if isinstance(cmd, str):
             pass  # Already in correct format
         elif isinstance(cmd, list):
-            cmd = ' '.join(str(cmd))
+            # Convert to one string
+            cmd = ' '.join([str(c) for c in cmd])
         else:
             raise ValueError("Command is not a string or list")
 
-        address = self.get_machine(machine).external_addr
+        print(f"Running command: {cmd}")
 
-        with paramiko.SSHClient() as ssh:
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.load_system_host_keys()
+        minfo = self.get_machine(machine)
+        wrapped_cmd = bash_wrap([cmd])
 
-            # Connection setup can take quite long with a large cluster
-            # better to be conservative here with the banner_timeout
-            ssh.connect(address, username=self.username, port=self.ssh_port,
-                        banner_timeout=60)
+        task = Task(0, minfo, "custom_command", wrapped_cmd,
+                    self, verbose=verbose, username=username)
+        task.start()
 
-            transport = ssh.get_transport()
-            if not transport:
-                raise RuntimeError("Failed to establish transport")
+        errors = join_all([task])
 
-            channel = transport.open_session()
-            channel.get_pty()
-            channel.set_combine_stderr(True)
-            channel.setblocking(True)
-
-            # set up the agent request handler to handle agent requests from the machine
-            paramiko.agent.AgentRequestHandler(channel)
-
-            print(f"Running command: {cmd}")
-
-            channel.exec_command(cmd)
-            stdout = channel.makefile()
-
-            for line in stdout.readlines():
-                print(line)
-
-            stdout.close()
+        if len(errors) > 0:
+            raise RemoteExecutionError(machine, cmd, '\n'.join(errors))
 
     def open_remote(self, filename: str, offset=0,
                     skip_missing=False, num_machines=None):

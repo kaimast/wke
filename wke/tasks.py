@@ -21,12 +21,15 @@ class Task(Thread):
     '''
     Represents the connection to a machine in the cluster.
 
-    Usually, you will not use this directly, but use something like run() instead.
+    Usually, you will not use this directly, but, for example, run()
+    or execute_on() instead.
     '''
 
-    def __init__(self, grp_index: int, machine_info, task_name: str, command: str,
-                cluster, prelude=None, options: list[str] = [], workdir="",
-                verbose=False, grp_size=1, username="", log_dir=None, debug=False):
+    def __init__(self, grp_index: int, machine_info, task_name: str,
+                 command: str, cluster, prelude=None,
+                 options: list[str] = [], workdir="",
+                 verbose=False, grp_size=1, username="",
+                 log_dir=None, debug=False):
 
         # assert isinstance(cluster, Cluster) Creates cyclic dependency
 
