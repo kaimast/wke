@@ -3,7 +3,9 @@
 from threading import Thread, Event
 from time import time, sleep
 from typing import Optional
+from os import eventfd, eventfd_read, eventfd_write
 
+import os
 import signal
 import socket
 import select
@@ -42,8 +44,13 @@ class Task(Thread):
         self._abort = Event()
         self._was_aborted = False
         self._log_dir = log_dir
+        # The prelude to use for this task
         self._prelude = prelude
+        # Print additional debug information?
         self._debug = debug
+        # Event fd used to wake up thread, if needed
+        self._notify = eventfd(0, os.EFD_NONBLOCK)
+        # Any exception/error that was generated during the tasks run
         self.exception = None
 
         Thread.__init__(self)
@@ -121,6 +128,7 @@ class Task(Thread):
     def abort(self):
         ''' Stop whatever command is running right now '''
         self._abort.set()
+        eventfd_write(self._notify, 1)
 
     def _generate_options(self) -> str:
         ''' Creates the argument string to pass to the command '''
@@ -226,7 +234,6 @@ class Task(Thread):
                 transport = ssh.get_transport()
                 channel = transport.open_session()
                 channel.set_combine_stderr(False)
-                channel.settimeout(1.0)
 
                 # Enabling pseudo terminal breaks stderr forwarding and should
                 # not be needed because we always only run a single command
@@ -240,6 +247,7 @@ class Task(Thread):
 
                 epoll = select.epoll()
                 epoll.register(channel, select.POLLIN)
+                epoll.register(self._notify, select.POLLIN)
 
                 stdout_data = bytes()
                 stderr_data = bytes()
@@ -321,11 +329,17 @@ class Task(Thread):
         '''
 
         # Poll every second
-        events = epoll.poll(timeout=1.0)
+        events = epoll.poll()
 
         # noop if there is no output
         if len(events) == 0:
             return (False, stdout_data, stderr_data)
+
+        try:
+            if eventfd_read(self._notify) > 0:
+                print("Task thread got woken up")
+        except BlockingIOError:
+            pass  # Happens if there is no event
 
         while channel.recv_ready():
             stdout_data += self._wait_for_data(channel.recv)

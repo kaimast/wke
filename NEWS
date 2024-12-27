@@ -1,4 +1,5 @@
 UNRELEASED:
+    * Use an eventfd to avoid polling SSH connections
     * Added integrations tests to CI that uses containers as "servers"
     * Transitioned from pylint to flake8 and updated code quality
     * Added `check_run` to handle failing commands similar to `check_call` in subprocess
