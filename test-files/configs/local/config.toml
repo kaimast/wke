@@ -1,3 +1,4 @@
 [targets]
 create-dir = []
 create-file = []
+run-forever = []

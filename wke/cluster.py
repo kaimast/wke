@@ -251,8 +251,15 @@ class Cluster:
         except CalledProcessError as err:
             raise RemoteExecutionError(machine, cmd, f"rsync failed: {err}") from err
 
-    def execute_on(self, machine: str, cmd: str):
+    def execute_on(self, machine: str, cmd: str | list[str]):
         ''' Execute a single command on a machine '''
+
+        if isinstance(cmd, str):
+            pass  # Already in correct format
+        elif isinstance(cmd, list):
+            cmd = ' '.join(str(cmd))
+        else:
+            raise ValueError("Command is not a string or list")
 
         address = self.get_machine(machine).external_addr
 
@@ -277,10 +284,9 @@ class Cluster:
             # set up the agent request handler to handle agent requests from the machine
             paramiko.agent.AgentRequestHandler(channel)
 
-            cmdstr = ' '.join(cmd)
-            print(f"Running command: {cmdstr}")
+            print(f"Running command: {cmd}")
 
-            channel.exec_command(cmdstr)
+            channel.exec_command(cmd)
             stdout = channel.makefile()
 
             for line in stdout.readlines():

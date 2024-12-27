@@ -176,7 +176,7 @@ def _parse_options(target, provided: Optional[dict[str, Any]]) -> tuple[list[str
 def run(selector, config, target_name, options: Optional[dict[str, Any]] = None,
         verbose=False, multiply=1, prelude: Optional[str] = DEFAULT_PRELUDE,
         dry_run=False, log_dir: Optional[str] = None, timeout: Optional[float] = None,
-        debug=False, workdir=None, quiet_fail=False) -> bool:
+        debug=False, workdir=None, quiet_fail=False, background=False) -> bool:
     '''
         Runs the specified command(s) in the foreground
 
@@ -188,11 +188,14 @@ def run(selector, config, target_name, options: Optional[dict[str, Any]] = None,
                           is unsuccessful
             * dry_run: Do not actually perform the task (for testing only)
             * timeout: Give up after the specified duration (in seconds)
+            * background: Is this a background task (will not treat SIGTERM as error)
     '''
     try:
-        check_run(selector, config, target_name, options=options, verbose=verbose,
-            multiply=multiply, prelude=prelude, dry_run=dry_run,
-            log_dir=log_dir, timeout=timeout, debug=debug, workdir=workdir)
+        check_run(selector, config, target_name, options=options,
+                  verbose=verbose, multiply=multiply, prelude=prelude,
+                  dry_run=dry_run, log_dir=log_dir, timeout=timeout,
+                  background=background, debug=debug, workdir=workdir)
+
         return True
     except RunTargetError as err:
         if not quiet_fail:
@@ -201,9 +204,12 @@ def run(selector, config, target_name, options: Optional[dict[str, Any]] = None,
         return False
 
 
-def check_run(selector, config, target_name, options: Optional[dict[str, Any]] = None,
-        verbose=False, multiply: int = 1, prelude: Optional[str] = DEFAULT_PRELUDE,
-        dry_run=False, log_dir=None, timeout=None, debug=False, workdir=None):
+def check_run(selector, config, target_name,
+        options: Optional[dict[str, Any]] = None,
+        verbose=False, multiply: int = 1,
+        prelude: Optional[str] = DEFAULT_PRELUDE,
+        dry_run=False, log_dir=None, timeout=None,
+        debug=False, workdir=None, background=False):
     '''
         This behaves like `run` but, smilar to subprocess.check_call
         will throw an exception on failure.
@@ -284,10 +290,11 @@ def check_run(selector, config, target_name, options: Optional[dict[str, Any]] =
     for task in tasks:
         task.start()
 
-    errs = join_all(tasks, start_time=start_time, timeout=timeout)
+    errors = join_all(tasks, start_time=start_time,
+                    timeout=timeout, background=background)
 
-    if len(errs) > 0:
-        raise RunTargetError(target.name, errs)
+    if len(errors) > 0:
+        raise RunTargetError(target.name, errors)
 
 
 def background_run(selector, config, target_name, options: Optional[dict] = None,
@@ -316,7 +323,7 @@ def background_run(selector, config, target_name, options: Optional[dict] = None
                                            'log_dir': log_dir, 'workdir': workdir,
                                            'prelude': prelude, 'dry_run': dry_run,
                                            'timeout': timeout, 'debug': debug,
-                                           'options': options,
+                                           'options': options, 'background': True
                                            })
     proc.start()
     return proc

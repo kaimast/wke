@@ -128,7 +128,11 @@ class Task(Thread):
     def abort(self):
         ''' Stop whatever command is running right now '''
         self._abort.set()
-        eventfd_write(self._notify, 1)
+
+        try:
+            eventfd_write(self._notify, 1)
+        except IOError:
+            print("Task is already shut(ting) down")
 
     def _generate_options(self) -> str:
         ''' Creates the argument string to pass to the command '''
@@ -288,6 +292,9 @@ class Task(Thread):
             channel.close()
             logger.close()
 
+            # make sure we don't run out of FDs
+            os.close(self._notify)
+
     def _fetch_data(self, func):
         ''' Helper to read stdout or stderr output, if any '''
         try:
@@ -393,23 +400,27 @@ def _try_join_task(task: Task, all_tasks: list[Task],
 
 
 def join_all(tasks: list[Task], start_time=None, verbose=True,
-        timeout=None, use_sighandler=True, poll_interval=0.1) -> list[str]:
+             timeout=None, use_sighandler=True, poll_interval=0.1,
+             background=False) -> list[str]:
     '''
         Blocks until the given tasks have terminated.
         This function returns a list of errors
     '''
 
     errors: list[str] = []
-    has_timed_out = False
 
     if not start_time:
         start_time = time()
 
     def signal_handler(_signum, _frame):
         # gracefully shutdown and unmount everything
-        error = "Got kill signal. Stopping all outstanding tasks."
-        print(f"🛑 {error}")
-        errors.append(error)
+        msg = "Got kill signal. Stopping all outstanding tasks."
+        print(f"🛑 {msg}")
+
+        # Background tasks are expected to be stopped eventually
+        # Do not treat SIGTERM as error, in this case
+        if not background:
+            errors.append(msg)
         _stop_all(tasks)
 
     if poll_interval < 0.0:
@@ -425,13 +436,11 @@ def join_all(tasks: list[Task], start_time=None, verbose=True,
 
         elapsed = time() - start_time
         if timeout and elapsed > timeout:
-            print("⚠️  Timeout reached: stopping all outstanding tasks")
-            has_timed_out = True
+            msg = "Timeout reached: stopping all outstanding tasks"
+            print("⚠️  {msg}")
+            errors.append(msg)
             _stop_all(tasks)
 
         sleep(poll_interval)  # stop all if one fails
-
-    if has_timed_out:
-        return []
 
     return errors

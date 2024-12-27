@@ -1,6 +1,8 @@
 ''' Connects to the local machine to run tests '''
 
-from wke import Configuration, Cluster, check_run
+from time import sleep
+
+from wke import Configuration, Cluster, run, check_run, background_run
 
 
 def test_create_file():
@@ -29,3 +31,31 @@ def test_create_file():
 
     assert len(files2) == 1
     assert files2[0].readlines()[0] == "hello wke!\n"
+
+
+def test_abort():
+    '''
+        Tests stopping a task
+    '''
+
+    config = Configuration('local', base_path='test-files/configs')
+    cluster = Cluster(path='test-files/configs/local-cluster.toml')
+    s = cluster.create_slice()
+
+    task = background_run(s, config, 'run-forever')
+    sleep(0.1)
+    task.kill()
+    task.join()
+
+
+def test_join_timeout():
+    '''
+        Tests timeout for run() 
+    '''
+
+    config = Configuration('local', base_path='test-files/configs')
+    cluster = Cluster(path='test-files/configs/local-cluster.toml')
+    s = cluster.create_slice()
+
+    success = run(s, config, 'run-forever', timeout=0.5)
+    assert not success
