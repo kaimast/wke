@@ -12,7 +12,8 @@ from time import sleep
 from os import rename
 from os.path import isfile, getmtime
 
-from ..errors import ClusterError, RunTargetError, ConfigurationError
+from ..errors import ClusterError, RunTargetError, RemoteExecutionError
+from ..errors import ConfigurationError
 from .printer import ResultPrinter
 from .params import parse_parameters, ExponentialSteps, LinearSteps, ListSteps
 from .params import Parameter, ParameterSet
@@ -59,6 +60,9 @@ def _run_benchmark(benchmark_func, parameters: dict[str, Parameter],
             success = benchmark_func(bench_params, collect_statistics, result_printer,
                                      verbose=verbose)
         except RunTargetError as err:
+            print(f"ERROR: {err}")
+            success = False
+        except RemoteExecutionError as err:
             print(f"ERROR: {err}")
             success = False
 
